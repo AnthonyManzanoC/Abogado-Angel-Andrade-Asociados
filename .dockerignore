@@ -1,0 +1,10 @@
+.git
+.local
+frontend
+tests
+node_modules
+**/bin
+**/obj
+**/appsettings.Local.json
+**/.env*
+*.log
