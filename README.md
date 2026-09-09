@@ -51,7 +51,7 @@ Fuentes de implementación: [WebMCP, API imperativa](https://developer.chrome.co
 
 ## Desarrollo y validación
 
-Requisitos: Node.js 22.13+ y .NET SDK 9.0.
+Requisitos: Node.js 22.x (22.13 o posterior dentro de esa versión mayor) y .NET SDK 9.0.
 
 ```powershell
 # Terminal 1, desde backend (la configuración local ya está preparada)
@@ -101,6 +101,25 @@ El puerto del pooler es **5432 (sesión)**. El arranque aplica las migraciones p
 Importa el mismo repositorio y selecciona **Root Directory: `frontend`** y **Framework: Next.js**. Se incluye `frontend/vercel.json`. Configura `API_INTERNAL_URL=https://TU-API.onrender.com` para la compilación y ejecución; publica nuevamente si cambia esa dirección. Todas las peticiones del navegador van al mismo origen `/api/*`; Next.js las redirige a la API. Las credenciales PostgreSQL nunca se configuran en Vercel.
 
 Configura la URL definitiva de Vercel en `ALLOWED_ORIGINS` de Render. Para usar vistas previas, añade solo las URLs exactas autorizadas. El frontend espera HTTPS en producción.
+
+#### Si Vercel muestra una advertencia o la web no conecta
+
+En **Settings → Build and Deployment**, utiliza estos ajustes:
+
+| Ajuste | Valor |
+| --- | --- |
+| Root Directory | `frontend` |
+| Framework Preset | `Next.js` |
+| Build Command | `npm run build` (incluido en `vercel.json`) |
+| Install Command | `npm ci` (incluido en `vercel.json`) |
+| Output Directory | Predeterminado de Next.js; desactivar cualquier override manual |
+| Node.js Version | `22.x` (fijado también en `package.json`) |
+
+El archivo `vercel.json` ya selecciona Next.js para el despliegue aunque el panel muestre `Other`; conviene alinear el panel. La advertencia sobre `engines.node >=22.13.0` no era un fallo de compilación: el rango se ha limitado a `22.x` para evitar saltos automáticos de versión mayor.
+
+En **Settings → Environment Variables**, agrega `API_INTERNAL_URL` con la URL HTTPS real del backend Render, sin `/api` ni barra final, para Production y los entornos Preview que utilices. No uses `localhost` ni `127.0.0.1`: en Vercel esas direcciones no apuntan a este equipo. Despliega nuevamente después de cambiarla, porque Next.js genera el proxy durante la compilación.
+
+Verifica primero `https://TU-API.onrender.com/api/health` y luego `https://TU-WEB.vercel.app/api/health`; ambos deben devolver `status: "ok"` y `database: "connected"`. Publicar únicamente el frontend no inicia el backend .NET. Si el despliegue aparece como fallido, revisa las últimas líneas completas del registro: `Compiled successfully` y una advertencia no identifican por sí solos el error final.
 
 Los archivos se suben directamente a la API en Render, sin atravesar las funciones de Vercel. El administrador solicita primero un permiso aleatorio de un solo uso, válido por dos minutos; CORS solo permite los orígenes autorizados. El servidor valida y guarda hasta 25 MB por archivo. `API_PUBLIC_URL` y `API_INTERNAL_URL` deben usar el mismo origen de API para que la política de seguridad del frontend permita la carga. Las peticiones normales continúan pasando por el proxy del mismo origen.
 
