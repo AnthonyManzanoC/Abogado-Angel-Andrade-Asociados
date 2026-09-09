@@ -2,7 +2,8 @@ import type { NextConfig } from 'next';
 import path from 'node:path';
 const api = process.env.API_INTERNAL_URL || 'http://127.0.0.1:5080';
 const config: NextConfig = {
-  output: 'standalone',
+  // Vercel's adapter packages the app itself; standalone conflicts with Next 16.3 tracing.
+  output: process.env.VERCEL === '1' ? undefined : 'standalone',
   turbopack: { root: path.resolve(import.meta.dirname) },
   async rewrites() {
     return [{ source: '/api/:path*', destination: api + '/api/:path*' }];

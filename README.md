@@ -117,6 +117,8 @@ En **Settings → Build and Deployment**, utiliza estos ajustes:
 
 El archivo `vercel.json` ya selecciona Next.js para el despliegue aunque el panel muestre `Other`; conviene alinear el panel. La advertencia sobre `engines.node >=22.13.0` no era un fallo de compilación: el rango se ha limitado a `22.x` para evitar saltos automáticos de versión mayor.
 
+Si aparece `ENOENT ... .next/next-server.js.nft.json` después de `Running onBuildComplete from Vercel`, existe un conflicto entre Next.js 16.3, el adaptador de Vercel y la salida `standalone` ([incidencia #96646](https://github.com/vercel/next.js/issues/96646)). La configuración desactiva `standalone` cuando `VERCEL=1` (variable automática de la plataforma) y la conserva fuera de Vercel. Despliega el commit con esta corrección; no crees manualmente el archivo de trazado. Si el panel tiene Node.js `24.x`, selecciona `22.x` para alinearlo con `package.json` y quitar la advertencia de versiones distintas.
+
 En **Settings → Environment Variables**, agrega `API_INTERNAL_URL` con la URL HTTPS real del backend Render, sin `/api` ni barra final, para Production y los entornos Preview que utilices. No uses `localhost` ni `127.0.0.1`: en Vercel esas direcciones no apuntan a este equipo. Despliega nuevamente después de cambiarla, porque Next.js genera el proxy durante la compilación.
 
 Verifica primero `https://TU-API.onrender.com/api/health` y luego `https://TU-WEB.vercel.app/api/health`; ambos deben devolver `status: "ok"` y `database: "connected"`. Publicar únicamente el frontend no inicia el backend .NET. Si el despliegue aparece como fallido, revisa las últimas líneas completas del registro: `Compiled successfully` y una advertencia no identifican por sí solos el error final.
