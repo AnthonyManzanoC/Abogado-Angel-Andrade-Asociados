@@ -11,6 +11,7 @@ export function NotificationAdmin() {
     webhookConfigured: boolean;
   } | null>(null);
   const [search, setSearch] = useState('');
+  const [searchNotice, setSearchNotice] = useState('');
   const [data, setData] = useState<any>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -42,6 +43,12 @@ export function NotificationAdmin() {
     }
   }
   async function verifyConfiguration() {
+    if (data && typeof data.webhookConfigured !== 'boolean') {
+      setError(
+        'El servidor todavía ejecuta una versión anterior. Despliega el último commit del backend en Render y vuelve a comprobar la configuración.',
+      );
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -89,10 +96,30 @@ export function NotificationAdmin() {
         <input
           className="field"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            if (/xkeysib-/i.test(e.target.value)) {
+              setSearch('');
+              setSearchNotice(
+                'Este buscador solo filtra números de solicitud. La clave de Brevo se configura como BREVO_API_KEY en el servidor de Render.',
+              );
+              return;
+            }
+            setSearchNotice('');
+            setSearch(e.target.value);
+          }}
           placeholder="AA-…"
+          autoComplete="off"
+          spellCheck={false}
         />
+        <span className="form-note">
+          Introduce el número AA- de una solicitud para localizar sus avisos.
+        </span>
       </label>
+      {searchNotice && (
+        <p className="notice" role="status">
+          {searchNotice}
+        </p>
+      )}
       <p>
         {data
           ? data.enabled
@@ -101,7 +128,19 @@ export function NotificationAdmin() {
           : 'Consultando notificaciones…'}
       </p>
       {data && !data.configured && (
-        <p className="error-message">Falta la clave de Brevo en el servidor.</p>
+        <div className="error-message">
+          <strong>Falta configurar Brevo en Render.</strong>
+          <p>
+            En el servicio andrade-legal-api, abre Environment y configura
+            BREVO_API_KEY, NOTIFICATION_ENCRYPTION_KEY, BREVO_WEBHOOK_SECRET y
+            EMAIL_DELIVERY_ENABLED=true. Conserva la clave de cifrado existente
+            y despliega el backend actualizado.
+          </p>
+          <p>
+            Después comprueba el remitente aquí y activa los correos en
+            Configuración. Pegar una clave en el buscador no activa los envíos.
+          </p>
+        </div>
       )}
       {data && !data.webhookConfigured && (
         <p className="notice">
