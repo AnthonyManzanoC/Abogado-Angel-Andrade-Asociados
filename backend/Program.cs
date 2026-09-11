@@ -24,6 +24,7 @@ builder.Services.AddRateLimiter(o =>
 builder.Services.AddMcpServer().WithHttpTransport(o => { o.Stateless = true; }).WithTools<PortalTools>();
 var app = builder.Build();
 var db = app.Services.GetRequiredService<Database>();
+if (args.Contains("--reset-admin")) { await db.ResetAdmin(builder.Configuration); Console.WriteLine("Acceso administrativo restablecido. Sesiones anteriores cerradas."); return; }
 if (args.Contains("--check-db")) { await using var c = await db.Source.OpenConnectionAsync(); Console.WriteLine("Supabase: conexión PostgreSQL verificada con TLS y certificado válido."); return; }
 await db.Migrate(app.Environment.ContentRootPath); await db.Seed(app.Environment.ContentRootPath, builder.Configuration);
 if (args.Contains("--migrate")) { Console.WriteLine("Migraciones y contenido inicial aplicados en andrade_portal."); return; }
@@ -35,7 +36,8 @@ app.Use(async (ctx, next) =>
     try
     {
         var origin = ctx.Request.Headers.Origin.ToString(); if (!string.IsNullOrEmpty(origin) && !origins.Contains(origin)) throw new PortalException("Origen no autorizado.", 403);
-        if (ctx.Request.Path.StartsWithSegments("/mcp")) { var expected = builder.Configuration["MCP_API_KEY"] ?? ""; var actual = ctx.Request.Headers.Authorization.ToString(); if (expected.Length < 32 || !Auth.Equal(actual, "Bearer " + expected)) throw new PortalException("Token MCP requerido.", 401); }
+        if (ctx.Request.Path == "/api/webhooks/brevo") { var secret = builder.Configuration["BREVO_WEBHOOK_SECRET"] ?? ""; if (secret.Length < 32 || !Auth.Equal(ctx.Request.Headers.Authorization.ToString(), "Bearer " + secret)) throw new PortalException("Webhook no autorizado.", 401); }
+        else if (ctx.Request.Path.StartsWithSegments("/mcp")) { var expected = builder.Configuration["MCP_API_KEY"] ?? ""; var actual = ctx.Request.Headers.Authorization.ToString(); if (expected.Length < 32 || !Auth.Equal(actual, "Bearer " + expected)) throw new PortalException("Token MCP requerido.", 401); }
         else if (!HttpMethods.IsGet(ctx.Request.Method) && !HttpMethods.IsHead(ctx.Request.Method) && !(HttpMethods.IsOptions(ctx.Request.Method) && ctx.Request.Path == "/api/uploads") && ctx.Request.Headers["X-Portal-Client"] != "web") throw new PortalException("Solicitud no autorizada.", 403);
         if (ctx.Request.Path.StartsWithSegments("/api/admin") && ctx.Request.Path != "/api/admin/login")
         {
@@ -82,9 +84,10 @@ app.MapPut("/api/admin/content/{kind}/{id}", async (HttpContext ctx, string kind
 });
 app.MapDelete("/api/admin/content/{kind}/{id}", async (HttpContext ctx, string kind, string id) => { await db.Execute("DELETE FROM andrade_portal.content WHERE id=@id AND kind=@kind", ("id", id), ("kind", kind)); await Audit(ctx, "content.deleted", id); return Results.Ok(new { ok = true }); });
 app.MapGet("/api/admin/settings", (Portal p) => p.Settings());
-app.MapPut("/api/admin/settings", async (HttpContext ctx, JsonObject input) =>
+app.MapPut("/api/admin/settings", async (HttpContext ctx, EmailService email, JsonObject input) =>
 {
     Validate.PremiumSettings(input);
+    if (input["emailEnabled"]?.GetValue<bool>() == true && (await db.Json("SELECT data->'emailEnabled' FROM andrade_portal.settings WHERE id=true"))?.GetValue<bool>() != true) { var readiness = await email.CheckConfiguration(input); if (!readiness.Ready) throw new PortalException(string.Join(" ", readiness.Issues), 409); }
     foreach (var key in new[] { "name", "heroTitle", "heroDescription", "address", "city", "hours", "biography" }) Validate.Text(input[key]?.ToString(), 2, key == "biography" ? 10000 : 500, key);
     if (!Validate.MediaUrl(input["heroImage"]?.ToString())) throw new PortalException("Selecciona una imagen de la biblioteca.");
     foreach (var key in new[] { "instagram", "linkedin" }) if (!Validate.SocialUrl(input[key]?.ToString())) throw new PortalException("Enlace social no válido.");
@@ -96,10 +99,14 @@ app.MapPut("/api/admin/settings", async (HttpContext ctx, JsonObject input) =>
 });
 app.MapGet("/api/admin/requests", (Portal p) => p.Requests());
 app.MapPut("/api/admin/requests/{id:guid}", async (HttpContext ctx, Portal p, Guid id, JsonObject input) => { await p.UpdateRequest(id, input, ((JsonNode)ctx.Items["admin"]!)["email"]!.ToString()); await Audit(ctx, "request.updated", id.ToString()); return Results.Ok(new { ok = true }); });
+app.MapPost("/api/admin/requests/{id:guid}/message", async (HttpContext ctx, Portal p, Guid id, JsonObject input) => { await p.SendClientMessage(id, input, ((JsonNode)ctx.Items["admin"]!)["email"]!.ToString()); return Results.Ok(new { ok = true }); });
+app.MapPost("/api/webhooks/brevo", async (EmailService email, JsonObject input) => { await email.ReceiveDelivery(input); return Results.Ok(new { ok = true }); });
+app.MapGet("/api/admin/notifications/check", (EmailService email) => email.CheckConfiguration());
 app.MapGet("/api/admin/notifications", async (Portal p) => new {
     enabled = builder.Configuration["EMAIL_DELIVERY_ENABLED"] == "true" && (await p.Settings())?["emailEnabled"]?.GetValue<bool>() == true,
     configured = !string.IsNullOrEmpty(builder.Configuration["BREVO_API_KEY"]),
-    items = await db.Json("SELECT COALESCE(jsonb_agg(row),'[]'::jsonb) FROM (SELECT jsonb_build_object('id',o.id,'reference',r.reference,'audience',o.audience,'eventStatus',o.event_status,'status',o.status,'attempts',o.attempts,'lastError',o.last_error,'createdAt',o.created_at,'providerId',o.provider_id) row FROM andrade_portal.email_outbox o JOIN andrade_portal.requests r ON r.id=o.request_id ORDER BY o.created_at DESC LIMIT 100) x")
+    webhookConfigured = (builder.Configuration["BREVO_WEBHOOK_SECRET"]?.Length ?? 0) >= 32,
+    items = await db.Json("SELECT COALESCE(jsonb_agg(row),'[]'::jsonb) FROM (SELECT jsonb_build_object('id',o.id,'reference',r.reference,'audience',o.audience,'eventStatus',o.event_status,'status',o.status,'deliveryStatus',o.delivery_status,'deliveryAt',o.delivery_at,'attempts',o.attempts,'lastError',o.last_error,'createdAt',o.created_at,'providerId',o.provider_id) row FROM andrade_portal.email_outbox o JOIN andrade_portal.requests r ON r.id=o.request_id ORDER BY o.created_at DESC LIMIT 100) x")
 });
 app.MapPost("/api/admin/notifications/{id:guid}/retry", async (HttpContext ctx, Guid id, EmailService email) => {
     await email.Retry(id);

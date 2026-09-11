@@ -134,4 +134,6 @@ Los archivos se suben directamente a la API en Render, sin atravesar las funcion
 
 La ampliación de trayectoria, galería, foto del edificio, casos ganados y programa de apoyo mensual se administra según [TRAYECTORIA-Y-APOYO.md](TRAYECTORIA-Y-APOYO.md). Configura el envío de Brevo y los pagos siguiendo [MEJORAS-PREMIUM.md](MEJORAS-PREMIUM.md).
 
+La recuperación de acceso, los avisos por novedad y las confirmaciones de entrega se describen en [ACTIVACION-CORREOS.md](ACTIVACION-CORREOS.md), con los pasos específicos de Render y Brevo.
+
 Revisa la biografía, áreas de servicio y horarios propuestos; completa teléfono/correo si los quieres públicos; carga videos reales y verifica sus permisos de inserción. Confirma los datos del aviso de privacidad del despacho. El portal no promete resultados legales ni confirma automáticamente una cita.

@@ -9,7 +9,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { emailStatusLabels } from './notification-status';
+import { emailStatusLabels, notificationState } from './notification-status';
 import {
   executePortalTool,
   formatDate,
@@ -331,12 +331,13 @@ export function Tracking() {
                 {result.notifications.map((n: any, i: number) => (
                   <p key={i}>
                     {statusLabels[n.eventStatus] || 'Novedad'} ·{' '}
-                    {emailStatusLabels[n.status] || n.status}
+                    {emailStatusLabels[notificationState(n)]}
                   </p>
                 ))}
                 <p className="form-note">
                   «Aceptado por Brevo» confirma la recepción por el proveedor.
-                  Revisa tu bandeja y spam para comprobar la entrega.
+                  La entrega se confirma cuando Brevo comunica la recepción por
+                  el servidor destinatario; no acredita lectura.
                 </p>
               </details>
             )}

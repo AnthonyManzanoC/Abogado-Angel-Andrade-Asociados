@@ -2,9 +2,15 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { statusLabels, formatDate } from '@/lib/portal-tools';
-import { emailStatusLabels } from './notification-status';
+import { emailStatusLabels, notificationState } from './notification-status';
 import { Check } from './form-controls';
 export function NotificationAdmin() {
+  const [check, setCheck] = useState<{
+    ready: boolean;
+    issues: string[];
+    webhookConfigured: boolean;
+  } | null>(null);
+  const [search, setSearch] = useState('');
   const [data, setData] = useState<any>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -35,14 +41,58 @@ export function NotificationAdmin() {
       setBusy(false);
     }
   }
+  async function verifyConfiguration() {
+    setBusy(true);
+    setError('');
+    try {
+      setCheck(await api('/admin/notifications/check'));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="admin-panel notification-admin">
       <div className="panel-heading">
-        <h2>Correos de citas · Brevo</h2>
+        <h2>Centro de notificaciones · Brevo</h2>
         <button className="text-link" onClick={load}>
           Actualizar
         </button>
       </div>
+      <button
+        type="button"
+        className="btn outline"
+        disabled={busy}
+        onClick={() => void verifyConfiguration()}
+      >
+        Comprobar configuración y remitente
+      </button>
+      {check && (
+        <div className="notice" role="status">
+          <strong>
+            {check.ready
+              ? 'Brevo y el remitente están preparados.'
+              : 'Hay configuración pendiente:'}
+          </strong>
+          {check.issues.map((issue) => (
+            <p key={issue}>{issue}</p>
+          ))}
+          <p>
+            La confirmación de entrega requiere también registrar el webhook en
+            Brevo. Activar el envío procesa los avisos pendientes.
+          </p>
+        </div>
+      )}
+      <label className="field-label">
+        Buscar una referencia entre los últimos 100 avisos
+        <input
+          className="field"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="AA-…"
+        />
+      </label>
       <p>
         {data
           ? data.enabled
@@ -53,15 +103,22 @@ export function NotificationAdmin() {
       {data && !data.configured && (
         <p className="error-message">Falta la clave de Brevo en el servidor.</p>
       )}
+      {data && !data.webhookConfigured && (
+        <p className="notice">
+          Falta configurar la confirmación de entrega (webhook) en el servidor.
+          Por ahora solo se puede comprobar la aceptación por Brevo.
+        </p>
+      )}
       <p className="form-note">
-        La aceptación por Brevo no acredita la entrega. Los envíos sin respuesta
-        confirmada requieren revisar el registro de Brevo antes de reintentar.
-        Se conserva el contenido original; comprueba la fecha de la novedad para
-        no reenviar estados antiguos.
+        Consultas, citas y apoyo solidario. La aceptación por Brevo no acredita
+        la entrega. Los envíos sin respuesta confirmada requieren revisar el
+        registro de Brevo antes de reintentar. Se conserva el contenido
+        original; comprueba la fecha de la novedad para no reenviar estados
+        antiguos.
       </p>
       <Check checked={reviewed} onChange={setReviewed}>
-        He revisado el registro de Brevo y el estado actual de la cita antes de
-        reintentar los avisos.
+        He revisado el registro de Brevo y el estado actual de la solicitud
+        antes de reintentar los avisos.
       </Check>
       {error && (
         <p className="error-message" role="alert">
@@ -69,31 +126,36 @@ export function NotificationAdmin() {
         </p>
       )}
       <div className="notification-list">
-        {data?.items?.map((n: any) => (
-          <div key={n.id} className="notification-row">
-            <div>
-              <strong>{n.reference}</strong>
-              <p>
-                {n.audience === 'client' ? 'Cliente' : 'Administrador'} ·{' '}
-                {statusLabels[n.eventStatus] || n.eventStatus}
-              </p>
-              <small>{formatDate(n.createdAt)}</small>
+        {data?.items
+          ?.filter((n: any) =>
+            n.reference.toLowerCase().includes(search.trim().toLowerCase()),
+          )
+          .map((n: any) => (
+            <div key={n.id} className="notification-row">
+              <div>
+                <strong>{n.reference}</strong>
+                <p>
+                  {n.audience === 'client' ? 'Cliente' : 'Administrador'} ·{' '}
+                  {statusLabels[n.eventStatus] || n.eventStatus}
+                </p>
+                <small>{formatDate(n.createdAt)}</small>
+              </div>
+              <div>
+                <strong>{emailStatusLabels[notificationState(n)]}</strong>
+                {n.lastError && <p className="form-note">{n.lastError}</p>}
+                {['failed', 'uncertain'].includes(n.status) &&
+                  (!n.deliveryStatus || n.deliveryStatus === 'unknown') && (
+                    <button
+                      className="btn outline"
+                      disabled={busy || !reviewed || !data.enabled}
+                      onClick={() => retry(n.id)}
+                    >
+                      Reintentar aviso
+                    </button>
+                  )}
+              </div>
             </div>
-            <div>
-              <strong>{emailStatusLabels[n.status]}</strong>
-              {n.lastError && <p className="form-note">{n.lastError}</p>}
-              {['failed', 'uncertain'].includes(n.status) && (
-                <button
-                  className="btn outline"
-                  disabled={busy || !reviewed || !data.enabled}
-                  onClick={() => retry(n.id)}
-                >
-                  Reintentar aviso
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
       {data?.items?.length === 0 && (
         <p className="admin-empty">Todavía no hay avisos en la cola.</p>

@@ -84,6 +84,7 @@ import { ServiceIcon } from './service-icon';
 import { EditorialAdmin } from './editorial-admin';
 import { SolidarityAdmin } from './solidarity-admin';
 import { PremiumSettings } from './premium-settings';
+import { ClientUpdate } from './client-update';
 import { NotificationAdmin } from './notification-admin';
 const sections = [
   { id: 'overview', label: 'Vista general', icon: LayoutDashboard },
@@ -97,6 +98,7 @@ const sections = [
   { id: 'media', label: 'Biblioteca multimedia', icon: ImageIcon },
   { id: 'settings', label: 'Configuración', icon: Settings },
   { id: 'activity', label: 'Actividad e integraciones', icon: Activity },
+  { id: 'notifications', label: 'Notificaciones', icon: Inbox },
 ];
 export function AdminPortal() {
   const router = useRouter();
@@ -1176,6 +1178,7 @@ export function AdminPortal() {
               </div>
             </div>
           )}
+          {tab === 'notifications' && <NotificationAdmin />}
           {tab === 'activity' && (
             <>
               <section className="admin-panel integration-panel">
@@ -1291,10 +1294,16 @@ export function AdminPortal() {
                     value={selected.status}
                     onChange={(v) => setSelected({ ...selected, status: v })}
                     options={Object.entries(statusLabels)
-                      .filter(
-                        ([key]) =>
-                          !key.startsWith('solidarity_') &&
-                          key !== 'pago_revision',
+                      .filter(([key]) =>
+                        [
+                          'recibido',
+                          'revision',
+                          'aprobado',
+                          'pendiente_pago',
+                          'confirmado',
+                          'completado',
+                          'cancelado',
+                        ].includes(key),
                       )
                       .map(([value, label]) => ({ value, label }))}
                   />
@@ -1435,6 +1444,17 @@ export function AdminPortal() {
                   <Save size={17} /> Guardar y actualizar seguimiento
                 </button>
               </form>
+              <ClientUpdate
+                id={selected.id}
+                updatedAt={selected.updatedAt}
+                onSaved={() => {
+                  setSelected(null);
+                  setNotice(
+                    'Novedad guardada y avisos preparados para ambas partes.',
+                  );
+                  void refresh();
+                }}
+              />
             </>
           )}
         </SheetContent>

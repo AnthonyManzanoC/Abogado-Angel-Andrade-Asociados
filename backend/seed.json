@@ -1,11 +1,104 @@
 {
- "settings":{"name":"Ángel Andrade Núñez","heroTitle":"El siguiente paso.\nCon el respaldo\ncorrecto.","heroDescription":"Claridad para decidir. Estrategia para avanzar. Acompañamiento legal cercano en los momentos que importan.","heroImage":"/images/angel-andrade.jpg","address":"Edificio Alavama, calle Sucre y 5 de Junio","city":"Babahoyo, Ecuador","hours":"Atención con cita previa","phone":"","email":"","instagram":"https://www.instagram.com/abg.angelandrade/","linkedin":"https://ec.linkedin.com/in/angel-andrade-nu%C3%B1ez-52a05b202","biography":"Soy Ángel Andrade Núñez, abogado en Babahoyo, Ecuador. Mi compromiso es escuchar tu situación, explicarte las alternativas y acompañarte con una estrategia clara.\n\nCada asunto merece atención personal. En el despacho encontrarás un espacio para conversar con confidencialidad, conocer los siguientes pasos y tomar decisiones informadas.","weekdays":[1,2,3,4,5],"startHour":9,"endHour":17,"closedDates":[]},
- "services":[
-  {"id":"civil-patrimonial","title":"Civil y patrimonial","summary":"Protege tus acuerdos, tu patrimonio y lo que has construido.","description":"Cuéntanos sobre contratos, obligaciones, bienes o una controversia patrimonial. Revisaremos tu situación y la documentación disponible para definir los siguientes pasos.\n\nLa primera conversación permite delimitar el asunto y acordar el alcance del acompañamiento.","icon":"document","category":"Personas"},
-  {"id":"familia","title":"Familia y acuerdos","summary":"Acompañamiento cercano para decisiones personales importantes.","description":"Un espacio confidencial para conversar sobre tu situación familiar y organizar la información necesaria. Cada solicitud se revisa de forma individual antes de definir una estrategia.\n\nPuedes compartir un resumen inicial sin adjuntar información sensible.","icon":"users","category":"Personas"},
-  {"id":"laboral","title":"Relaciones laborales","summary":"Claridad en tus derechos, obligaciones y relaciones de trabajo.","description":"Solicita una revisión de tu situación laboral, acuerdos o documentación. El despacho evaluará el asunto para determinar las alternativas y el alcance del servicio.\n\nOrganiza las fechas relevantes y la documentación disponible antes de la consulta.","icon":"briefcase","category":"Personas y negocios"},
-  {"id":"negocios","title":"Negocios y contratos","summary":"Decisiones con respaldo para emprender y hacer crecer tu negocio.","description":"Conversamos sobre los acuerdos y necesidades legales de tu actividad. La revisión inicial ayuda a identificar prioridades y definir una propuesta de acompañamiento.\n\nEl alcance y los honorarios se acuerdan personalmente antes de iniciar un servicio.","icon":"building","category":"Negocios"}
- ],
- "promotions":[],
- "posts":[{"id":"bienvenido-al-despacho","title":"Un espacio para conversar con claridad","summary":"Conoce cómo solicitar una consulta y dar el primer paso con el despacho.","description":"Puedes solicitar una cita presencial en el Edificio Alavama, en Babahoyo, o una conversación virtual. Elige un horario, comparte tus datos de contacto y guarda tu código de seguimiento.\n\nEl despacho revisará tu solicitud y confirmará los detalles en este portal. La solicitud inicial no constituye contratación ni asesoría jurídica.","category":"El despacho","kind":"article","cover":"/images/angel-andrade.jpg","url":""}]
+  "settings": {
+    "assistantName": "Alma",
+    "whatsapp": "+593 98 664 8328",
+    "logoUrl": "",
+    "introVideoUrl": "",
+    "introPoster": "",
+    "introTitle": "Conoce a tu abogado. En sus propias palabras.",
+    "virtualFee": 25,
+    "paymentTestMode": true,
+    "bankInstructions": "DATOS DE PRUEBA — NO TRANSFERIR\nBanco: ejemplo\nTitular: por configurar\nCuenta: pendiente de ingreso por el administrador",
+    "publicSiteUrl": "https://abogado-angel-andrade-asociados.vercel.app",
+    "senderEmail": "abogadoandradenotificaciones@gmail.com",
+    "notificationEmail": "abogadoandradenotificaciones@gmail.com",
+    "emailEnabled": false,
+    "buildingImage": "",
+    "buildingCaption": "Edificio Alavama · Babahoyo",
+    "profileImage": "",
+    "profileName": "Ángel Andrade Núñez",
+    "profileSubtitle": "Una relación personal. Un compromiso profesional.",
+    "solidarityEnabled": true,
+    "solidarityTitle": "Una oportunidad para volver a empezar.",
+    "solidarityDescription": "Cada mes, el abogado selecciona un caso para ofrecer acompañamiento legal gratuito a una persona que atraviesa una situación de vulnerabilidad.",
+    "solidarityCloseDay": 25,
+    "solidarityTerms": "La postulación es gratuita y confidencial. Se selecciona como máximo un caso al mes, mediante revisión personal de la necesidad, la viabilidad y el alcance del asunto. Postular no garantiza la selección, una cita ni un resultado. El alcance del apoyo y cualquier gasto de terceros se acuerdan antes de iniciar. Este canal no atiende emergencias ni suspende plazos.",
+    "name": "Ángel Andrade Núñez",
+    "heroTitle": "El siguiente paso.\nCon el respaldo\ncorrecto.",
+    "heroDescription": "Claridad para decidir. Estrategia para avanzar. Acompañamiento legal cercano en los momentos que importan.",
+    "heroImage": "/images/angel-andrade.jpg",
+    "address": "Edificio Alavama, calle Sucre y 5 de Junio",
+    "city": "Babahoyo, Ecuador",
+    "hours": "Lunes a viernes · 09:00 a 17:00 · Con cita previa",
+    "phone": "",
+    "email": "",
+    "instagram": "https://www.instagram.com/abg.angelandrade/",
+    "linkedin": "https://ec.linkedin.com/in/angel-andrade-nu%C3%B1ez-52a05b202",
+    "biography": "Soy Ángel Andrade Núñez, abogado en Babahoyo, Ecuador. Mi compromiso es escuchar tu situación, explicarte las alternativas y acompañarte con una estrategia clara.\n\nCada asunto merece atención personal. En el despacho encontrarás un espacio para conversar con confidencialidad, conocer los siguientes pasos y tomar decisiones informadas.",
+    "weekdays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "startHour": 9,
+    "endHour": 17,
+    "closedDates": []
+  },
+  "services": [
+    {
+      "id": "penal",
+      "title": "Derecho Penal y defensa",
+      "summary": "Defensa y acompañamiento ante una investigación o proceso penal.",
+      "description": "Revisión de tu situación y documentación para definir el alcance de la defensa y los siguientes pasos. Contacta directamente al abogado si tienes una diligencia o plazo próximo.",
+      "icon": "shield",
+      "category": "Personas"
+    },
+    {
+      "id": "civil-patrimonial",
+      "title": "Civil y patrimonial",
+      "summary": "Protege tus acuerdos, tu patrimonio y lo que has construido.",
+      "description": "Cuéntanos sobre contratos, obligaciones, bienes o una controversia patrimonial. Revisaremos tu situación y la documentación disponible para definir los siguientes pasos.\n\nLa primera conversación permite delimitar el asunto y acordar el alcance del acompañamiento.",
+      "icon": "document",
+      "category": "Personas"
+    },
+    {
+      "id": "familia",
+      "title": "Familia y acuerdos",
+      "summary": "Acompañamiento cercano para decisiones personales importantes.",
+      "description": "Un espacio confidencial para conversar sobre tu situación familiar y organizar la información necesaria. Cada solicitud se revisa de forma individual antes de definir una estrategia.\n\nPuedes compartir un resumen inicial sin adjuntar información sensible.",
+      "icon": "users",
+      "category": "Personas"
+    },
+    {
+      "id": "laboral",
+      "title": "Derecho Laboral",
+      "summary": "Claridad en tus derechos, obligaciones y relaciones de trabajo.",
+      "description": "Solicita una revisión de tu situación laboral, acuerdos o documentación. El despacho evaluará el asunto para determinar las alternativas y el alcance del servicio.\n\nOrganiza las fechas relevantes y la documentación disponible antes de la consulta.",
+      "icon": "briefcase",
+      "category": "Personas y negocios"
+    },
+    {
+      "id": "negocios",
+      "title": "Negocios y contratos",
+      "summary": "Decisiones con respaldo para emprender y hacer crecer tu negocio.",
+      "description": "Conversamos sobre los acuerdos y necesidades legales de tu actividad. La revisión inicial ayuda a identificar prioridades y definir una propuesta de acompañamiento.\n\nEl alcance y los honorarios se acuerdan personalmente antes de iniciar un servicio.",
+      "icon": "building",
+      "category": "Negocios"
+    }
+  ],
+  "promotions": [],
+  "posts": [
+    {
+      "id": "bienvenido-al-despacho",
+      "title": "Un espacio para conversar con claridad",
+      "summary": "Conoce cómo solicitar una consulta y dar el primer paso con el despacho.",
+      "description": "Puedes solicitar una cita presencial en el Edificio Alavama, en Babahoyo, o una conversación virtual. Elige un horario, comparte tus datos de contacto y guarda tu código de seguimiento.\n\nEl despacho revisará tu solicitud y confirmará los detalles en este portal. La solicitud inicial no constituye contratación ni asesoría jurídica.",
+      "category": "El despacho",
+      "kind": "article",
+      "cover": "/images/angel-andrade.jpg",
+      "url": ""
+    }
+  ]
 }

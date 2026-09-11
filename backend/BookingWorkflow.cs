@@ -14,7 +14,7 @@ public sealed partial class Portal
             'paymentStatus',r.payment_status,'paymentAmount',r.payment_amount,'paymentTest',r.payment_test,
             'paymentInstructions',CASE WHEN r.payment_test THEN 'DEMOSTRACIÓN. No realices transferencias. Contacta al despacho.' ELSE r.payment_instructions END,
             'paymentReference',r.payment_reference,'meetingUrl',CASE WHEN r.status='confirmado' THEN r.meeting_url ELSE '' END,
-            'notifications',COALESCE((SELECT jsonb_agg(jsonb_build_object('eventStatus',o.event_status,'status',o.status,'createdAt',o.created_at,'acceptedAt',o.accepted_at) ORDER BY o.created_at) FROM andrade_portal.email_outbox o WHERE o.request_id=r.id AND o.audience='client'),'[]'::jsonb),
+            'notifications',COALESCE((SELECT jsonb_agg(jsonb_build_object('eventStatus',o.event_status,'status',o.status,'deliveryStatus',o.delivery_status,'deliveryAt',o.delivery_at,'createdAt',o.created_at,'acceptedAt',o.accepted_at) ORDER BY o.created_at) FROM andrade_portal.email_outbox o WHERE o.request_id=r.id AND o.audience='client'),'[]'::jsonb),
             'events',COALESCE((SELECT jsonb_agg(jsonb_build_object('status',e.status,'note',e.note,'createdAt',e.created_at) ORDER BY e.id) FROM andrade_portal.request_events e WHERE e.request_id=r.id),'[]'::jsonb))
             FROM andrade_portal.requests r WHERE reference=@ref AND tracking_hash=@hash
             """, ("ref", reference), ("hash", Auth.Hash(token!))) ?? throw new PortalException("Código o clave de seguimiento incorrectos.", 404);
@@ -75,7 +75,7 @@ public sealed partial class Portal
         if (new[] { "cancelado", "completado" }.Contains(oldStatus) && meeting != O("meeting_url")) throw new PortalException("No puedes cambiar el enlace de una solicitud cerrada.", 409);
         var publicChange = status != oldStatus || note != O("public_note") || meeting != O("meeting_url") || payment != O("payment_status");
         await using (var cmd = Database.Command(c, "UPDATE andrade_portal.requests SET status=@status,public_note=@note,private_note=@private,meeting_url=@meeting,updated_at=now() WHERE id=@id", ("id", id), ("status", status), ("note", note), ("private", privateNote), ("meeting", meeting))) { await cmd.ExecuteNonQueryAsync(); }
-        if (publicChange) { await Event(c, id, status, note == "" ? EmailService.Label(status) : note); await email.Queue(c, id, status); }
+        if (publicChange) { var eventStatus = status != oldStatus ? status : payment != O("payment_status") ? "pago_verificado" : "actualizacion"; await Event(c, id, eventStatus, note == "" ? EmailService.Label(eventStatus) : note); await email.Queue(c, id, eventStatus); }
         await tx.CommitAsync();
     }
     public async Task Cancel(string reference, string token)

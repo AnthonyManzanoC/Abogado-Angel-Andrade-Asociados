@@ -31,3 +31,5 @@ services:
         sync: false
       - key: EMAIL_DELIVERY_ENABLED
         value: "true"
+      - key: BREVO_WEBHOOK_SECRET
+        sync: false

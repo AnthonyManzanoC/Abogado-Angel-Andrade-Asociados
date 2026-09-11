@@ -57,6 +57,7 @@ public sealed partial class Portal
         if (previous is "seleccionado" or "no_seleccionado") throw new PortalException("La decisión final ya fue registrada.", 409);
         await using (var update = Database.Command(c, "UPDATE andrade_portal.solidarity_applications SET decision=@decision,reviewed_by=@actor,selected_at=CASE WHEN @decision='seleccionado' THEN now() ELSE selected_at END WHERE request_id=@id", ("id", id), ("decision", decision), ("actor", actor))) await update.ExecuteNonQueryAsync();
         await using (var update = Database.Command(c, "UPDATE andrade_portal.requests SET status=@status,public_note=@note,private_note=@private,updated_at=now() WHERE id=@id", ("id", id), ("status", decision == "revision" ? "revision" : decision == "seleccionado" ? "aprobado" : "completado"), ("note", note), ("private", privateNote))) await update.ExecuteNonQueryAsync();
-        await Event(c, id, "solidarity_" + decision, note); await email.Queue(c, id, "solidarity_" + decision); await tx.CommitAsync();
+        if (decision != previous || note != r["public_note"]?.ToString()) { await Event(c, id, "solidarity_" + decision, note); await email.Queue(c, id, "solidarity_" + decision); }
+        await tx.CommitAsync();
     }
 }

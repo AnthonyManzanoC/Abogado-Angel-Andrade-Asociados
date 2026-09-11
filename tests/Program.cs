@@ -60,7 +60,11 @@ try{
  var persisted=await db.Json("SELECT jsonb_build_object('count',count(*)) FROM andrade_portal.requests WHERE email=@email",("email",email));Check(persisted!["count"]!.GetValue<int>()==2,"Solicitudes confirmadas directamente en PostgreSQL");
  using var web=new HttpClient(handler,false){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_WEB_URL") ?? "http://127.0.0.1:3000"),Timeout=TimeSpan.FromSeconds(60)};foreach(var path in new[]{"/","/firma","/servicios","/servicios/familia","/vitrina","/consulta","/seguimiento","/contacto","/privacidad","/admin","/api/health","/api/admin/me"})Check((await web.GetAsync(path)).IsSuccessStatusCode,"Ruta frontend "+path);
  await PremiumChecks.Run(db,config);
- await CommunityChecks.Run(db,config,client);
+ var currentPeriod=DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-5)).ToString("yyyy-MM");
+ var currentApplications=(await db.Json("SELECT to_jsonb(count(*)) FROM andrade_portal.solidarity_applications WHERE period=@period",("period",currentPeriod)))!.GetValue<int>();
+ if(currentApplications==0)await CommunityChecks.Run(db,config,client);
+ else Console.WriteLine("SKIP: Selección de la convocatoria actual: existen postulaciones reales. Se conservan sin modificaciones.");
+ await NotificationChecks.Run(db,config,client);
  Console.WriteLine($"\n{passed} verificaciones completadas. Se eliminarán todos los registros temporales.");
 }finally{
  await db.Execute("DELETE FROM andrade_portal.requests WHERE email=@email",("email",email));

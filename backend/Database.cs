@@ -40,6 +40,17 @@ public sealed class Database : IAsyncDisposable
         if (firstSeed == 1) foreach (var kind in new[] { "services", "posts", "promotions" }) { var index = 0; foreach (var item in seed[kind]!.AsArray()) { await Execute("INSERT INTO andrade_portal.content(id,kind,data,active,sort_order) VALUES(@id,@kind,@data::jsonb,true,@sort) ON CONFLICT DO NOTHING", ("id", item!["id"]!.ToString()), ("kind", kind), ("data", item.ToJsonString()), ("sort", index++)); } }
         var email = config["ADMIN_EMAIL"]; var password = config["ADMIN_PASSWORD"]; if (!string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(password)) { if (password.Length < 14) throw new InvalidOperationException("ADMIN_PASSWORD debe tener al menos 14 caracteres."); await Execute("INSERT INTO andrade_portal.admin_users(id,email,password_hash) VALUES(@id,@email,@hash) ON CONFLICT(email) DO NOTHING", ("id", Guid.NewGuid()), ("email", email.Trim().ToLowerInvariant()), ("hash", Auth.PasswordHash(password))); }
     }
+    public async Task ResetAdmin(IConfiguration config)
+    {
+        var email = (config["ADMIN_EMAIL"] ?? "").Trim().ToLowerInvariant(); var password = config["ADMIN_PASSWORD"] ?? "";
+        Validate.Text(email, 3, 200, "ADMIN_EMAIL"); Validate.Text(password, 14, 200, "ADMIN_PASSWORD");
+        await using var c = await Source.OpenConnectionAsync(); await using var tx = await c.BeginTransactionAsync();
+        await using var update = Command(c, "UPDATE andrade_portal.admin_users SET password_hash=@hash WHERE email=@email RETURNING id", ("hash", Auth.PasswordHash(password)), ("email", email));
+        var id = await update.ExecuteScalarAsync() ?? throw new InvalidOperationException("El administrador no existe. Revisa ADMIN_EMAIL antes de recuperar el acceso.");
+        await using (var clear = Command(c, "DELETE FROM andrade_portal.sessions WHERE user_id=@id", ("id", id))) await clear.ExecuteNonQueryAsync();
+        await using (var audit = Command(c, "INSERT INTO andrade_portal.audit_log(actor,action,target) VALUES('server-recovery','admin.password-reset',@email)", ("email", email))) await audit.ExecuteNonQueryAsync();
+        await tx.CommitAsync();
+    }
     public async ValueTask DisposeAsync() => await Source.DisposeAsync();
 }
 public static class Auth

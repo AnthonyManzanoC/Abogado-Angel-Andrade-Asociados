@@ -25,14 +25,15 @@ public sealed class NotificationSecrets(IConfiguration config)
     }
 }
 
-public sealed class EmailService(Database db, IConfiguration config, NotificationSecrets secrets, IHttpClientFactory clients)
+public sealed partial class EmailService(Database db, IConfiguration config, NotificationSecrets secrets, IHttpClientFactory clients)
 {
     public static string Label(string status) => status switch {
         "solidarity_recibido" => "Postulación solidaria recibida", "solidarity_revision" => "Postulación en revisión", "solidarity_seleccionado" => "Tu caso fue seleccionado para el apoyo mensual", "solidarity_no_seleccionado" => "Tu caso no fue seleccionado en esta convocatoria",
+        "actualizacion" => "Nueva comunicación del despacho", "solidarity_actualizacion" => "Novedad de tu apoyo solidario", "pago_verificado" => "Transferencia verificada", "delivery_issue" => "Un aviso al cliente no pudo entregarse",
         "recibido" => "Solicitud recibida", "revision" => "Solicitud en revisión", "aprobado" => "Solicitud aprobada",
         "pendiente_pago" => "Pendiente de pago", "confirmado" => "Cita agendada", "completado" => "Atención completada",
         "cancelado" => "Solicitud cancelada", "pago_revision" => "Transferencia en revisión", _ => "Novedad en tu solicitud" };
-    public async Task Queue(NpgsqlConnection c, Guid id, string eventStatus)
+    public async Task Queue(NpgsqlConnection c, Guid id, string eventStatus, string? dedupeKey = null, string? onlyAudience = null)
     {
         await using var cmd = Database.Command(c, "SELECT to_jsonb(r) FROM andrade_portal.requests r WHERE id=@id", ("id", id));
         var r = JsonNode.Parse((await cmd.ExecuteScalarAsync())!.ToString()!)!;
@@ -43,23 +44,19 @@ public sealed class EmailService(Database db, IConfiguration config, Notificatio
         var origin = (config["PUBLIC_SITE_URL"] ?? S("publicSiteUrl")).TrimEnd('/');
         var siteReady = Uri.TryCreate(origin, UriKind.Absolute, out var site) && site.Scheme == "https" && site.AbsolutePath == "/" && string.IsNullOrEmpty(site.Query) && string.IsNullOrEmpty(site.Fragment);
         var tracking = siteReady && R("tracking_secret") != "" ? origin + "/seguimiento#ref=" + R("reference") + "&key=" + secrets.Unprotect(R("tracking_secret")) : "";
-        var title = Label(eventStatus); var at = R("appointment_at");
-        var date = R("service_id") == "solidarity" ? "Programa de apoyo solidario · sin cobro por postular" : at == "" ? "Sin horario solicitado" : DateTimeOffset.Parse(at).ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm") + " · Ecuador (UTC−5)";
+        var title = Label(eventStatus);
         foreach (var audience in new[] { "client", "admin" })
         {
+            if (onlyAudience != null && audience != onlyAudience) continue;
+            var outboxId = Guid.NewGuid();
             var recipient = audience == "client" ? R("email") : S("notificationEmail");
             if (recipient == "") continue;
             var destination = audience == "client" ? tracking : siteReady ? origin + "/admin" : "";
-            var detail = audience == "client" ? "Puedes regresar a tu solicitud con el botón de seguimiento de este correo. Conserva este enlace de forma privada." : "Ingresa al administrador para revisar la solicitud y atender los siguientes pasos.";
-            var paid = R("payment_status") == "verificado";
-            var bank = r["payment_test"]?.GetValue<bool>() == true ? "<p><strong>DEMOSTRACIÓN: no realices transferencias. El despacho debe activar los datos bancarios reales.</strong></p>" : audience == "client" && !paid && R("payment_status") != "no_requerido" && !new[] { "cancelado", "completado" }.Contains(R("status"))
-                ? "<h2>Transferencia para tu consulta virtual</h2><p>Valor: USD " + H(R("payment_amount")) + "</p><p style='white-space:pre-line'>" + H(R("payment_instructions")) + "</p><p>Indica la referencia de tu cita al transferir. El despacho verificará el ingreso antes de agendar.</p>" : "";
-            var meeting = R("status") == "confirmado" && R("meeting_url") != "" ? "<p><a href='" + H(R("meeting_url")) + "'>Entrar a la videollamada</a></p>" : "";
             var subject = title + " · " + R("reference");
-            var html = "<html lang='es'><body style='margin:0;background:#111719;color:#f0f0e9;font-family:Arial,sans-serif;padding:28px'><main style='max-width:580px;margin:auto'><p style='color:#d2b879;letter-spacing:2px'>" + H(S("name")) + "</p><h1>" + H(title) + "</h1><p>Referencia: <strong>" + H(R("reference")) + "</strong></p><p>" + H(date) + " · " + H(R("service_id") == "solidarity" ? "Revisión privada del abogado" : R("mode")) + "</p>" + (new[] { "confirmado", "cancelado", "completado" }.Contains(R("status")) ? "" : "<p>La solicitud aún no constituye una cita agendada.</p>") + bank + "<p>" + detail + "</p>" + (destination == "" ? "<p>Conserva el comprobante obtenido en la web para consultar el seguimiento.</p>" : "<p><a style='display:inline-block;padding:14px 20px;background:#d2b879;color:#111719;border-radius:6px' href='" + H(destination) + "'>" + (audience == "client" ? "Ver mi seguimiento" : "Abrir administrador") + "</a></p>") + meeting + "<p>Si no ves otros avisos, revisa también la carpeta de correo no deseado.</p></main></body></html>";
+            var html = EmailTemplate.Render(r, s, eventStatus, audience, destination);
             var payload = new JsonObject { ["sender"] = new JsonObject { ["email"] = S("senderEmail"), ["name"] = S("name") }, ["to"] = new JsonArray(new JsonObject { ["email"] = recipient }), ["subject"] = subject, ["htmlContent"] = html, ["tags"] = new JsonArray("andrade-citas") };
-            await using var insert = Database.Command(c, "INSERT INTO andrade_portal.email_outbox(id,request_id,audience,event_status,payload_secret,status,last_error) VALUES(@id,@request,@audience,@event,@payload,@status,@error)",
-                ("id", Guid.NewGuid()), ("request", id), ("audience", audience), ("event", eventStatus), ("payload", secrets.Protect(payload.ToJsonString())),
+            await using var insert = Database.Command(c, "INSERT INTO andrade_portal.email_outbox(id,request_id,audience,event_status,payload_secret,status,last_error,dedupe_key) VALUES(@id,@request,@audience,@event,@payload,@status,@error,@dedupe) ON CONFLICT DO NOTHING",
+                ("id", outboxId), ("dedupe", dedupeKey), ("request", id), ("audience", audience), ("event", eventStatus), ("payload", secrets.Protect(payload.ToJsonString())),
                 ("status", siteReady && S("senderEmail") != "" ? "pending" : "failed"), ("error", siteReady && S("senderEmail") != "" ? "" : "Falta URL pública HTTPS o remitente. Completa Configuración antes de nuevas solicitudes."));
             await insert.ExecuteNonQueryAsync();
         }
@@ -68,9 +65,9 @@ public sealed class EmailService(Database db, IConfiguration config, Notificatio
     public async Task Retry(Guid id)
     {
         await using var c = await db.Source.OpenConnectionAsync(); await using var tx = await c.BeginTransactionAsync();
-        await using var select = Database.Command(c, "SELECT to_jsonb(o) FROM andrade_portal.email_outbox o WHERE id=@id AND status IN ('failed','uncertain') FOR UPDATE", ("id", id));
+        await using var select = Database.Command(c, "SELECT to_jsonb(o) FROM andrade_portal.email_outbox o WHERE id=@id AND status IN ('failed','uncertain') AND delivery_status='unknown' FOR UPDATE", ("id", id));
         var raw = await select.ExecuteScalarAsync();
-        if (raw == null) throw new PortalException("Solo puedes reintentar avisos fallidos o sin respuesta confirmada.", 409);
+        if (raw == null) throw new PortalException("Solo puedes reintentar avisos fallidos o sin respuesta y sin confirmación de entrega del proveedor. Revisa la incidencia antes de reenviar.", 409);
         var row = JsonNode.Parse(raw.ToString()!)!;
         await using var settingsCmd = Database.Command(c, "SELECT data FROM andrade_portal.settings WHERE id=true");
         var s = JsonNode.Parse((await settingsCmd.ExecuteScalarAsync())!.ToString()!)!;
@@ -110,7 +107,7 @@ public sealed class EmailService(Database db, IConfiguration config, Notificatio
         try
         {
             var payload = JsonNode.Parse(secrets.Unprotect(row["payload_secret"]!.ToString()))!;
-            payload["headers"] = new JsonObject { ["idempotencyKey"] = id.ToString() };
+            payload["headers"] = new JsonObject { ["idempotencyKey"] = id.ToString(), ["X-Mailin-custom"] = "andrade:" + id.ToString() };
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
             request.Headers.Add("api-key", config["BREVO_API_KEY"]);
             request.Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");

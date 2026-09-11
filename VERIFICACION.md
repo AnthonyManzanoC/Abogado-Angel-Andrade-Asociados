@@ -1,5 +1,17 @@
 # Verificación de la actualización premium
 
+## Acceso y notificaciones — 11 de septiembre de 2026
+
+- Restablecimiento del administrador verificado en la web pública: login y sesión autenticada HTTP 200 con la contraseña de Render.
+- Catálogo público verificado: Derecho Penal y defensa, Derecho Laboral y atención de lunes a viernes, 09:00–17:00.
+- 90 verificaciones HTTP, base de datos, pagos, correo y recuperación aprobadas; 17 verificaciones del cliente aprobadas. Las pruebas de selección sobre la convocatoria actual se omiten porque ya contiene postulaciones reales. La novedad posterior a una selección se verificó en una convocatoria sintética separada.
+- Webhook autenticado, duplicados, eventos tardíos, rechazo al cliente, alerta única al admin y ausencia de bucles comprobados con eventos de prueba. Ningún correo real enviado.
+- Comprobación local contra Brevo real: remitente preparado, sin incidencias; envío pausado. Backend público: clave Brevo ausente y envío pausado. Falta aplicar variables y desplegar el backend en Render para la activación real.
+- Build .NET sin advertencias y build Next.js/TypeScript aprobados. El lint estricto conserva la deuda documentada previamente y no se presenta como aprobado.
+- Migración 005 aplicada, con RLS y sin borrar solicitudes. Vista previa en 3002 con API de revisión en 5085. Los servidores de revisión anteriores en 5082/5083 se cerraron.
+
+Pasos operativos en [ACTIVACION-CORREOS.md](ACTIVACION-CORREOS.md). El archivo `.local/render-correo.env` contiene únicamente la configuración privada para Render y queda fuera de Git.
+
 Fecha: 10 de septiembre de 2026 (Ecuador).
 
 - 44 verificaciones HTTP, PostgreSQL, CMS, reservas, acceso y MCP de la suite existente aprobadas.

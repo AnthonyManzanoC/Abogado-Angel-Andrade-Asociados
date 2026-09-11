@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { ClientUpdate } from './client-update';
 import { Choice } from './form-controls';
 const labels: Record<string, string> = {
   recibido: 'Recibida',
@@ -191,6 +192,17 @@ export function SolidarityAdmin() {
                   : 'Guardar revisión'}
             </button>
           </fieldset>
+          <ClientUpdate
+            id={selected.id}
+            updatedAt={selected.updatedAt}
+            onSaved={() => {
+              setSelected(null);
+              setMessage(
+                'Novedad del apoyo guardada y avisos preparados para ambas partes.',
+              );
+              void load().catch((e) => setMessage(e.message));
+            }}
+          />
           <button
             className="btn outline"
             type="button"
