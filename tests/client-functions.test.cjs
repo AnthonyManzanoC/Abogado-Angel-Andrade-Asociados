@@ -14,6 +14,7 @@ function load(relative){const source=fs.readFileSync(path.join(__dirname,'../fro
  check(tools.detectIntent('¿Cuál es la dirección?'),'office','Ubicación con tildes y signos');
  check(tools.detectIntent('¿Cómo cancelar un contrato?'),'services','Una consulta sobre contratos no borra la conversación');
  check(tools.detectIntent('reiniciar'),'reset','Reinicio solo por instrucción explícita');
+ check(tools.detectIntent('Quisiera postular al caso gratuito'),'solidarity','Asistente dirige el apoyo gratuito a la convocatoria privada');
  const a=tools.credentials(),b=tools.credentials();assert.notEqual(a.trackingToken,b.trackingToken);check(a.trackingToken.length,64,'Clave privada aleatoria de 256 bits');
  check(new URL('https://portal.test'+tools.trackingLink('AA-123456789012',a.trackingToken)).search,'','La clave de seguimiento no viaja en query string');
  check(embeds.embedUrl('instagram','https://instagram.com.evil.test/reel/abc123/'),null,'Host suplantado bloqueado');

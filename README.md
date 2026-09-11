@@ -2,6 +2,8 @@
 
 Aplicación completa en español para el despacho del Edificio Alavama, calle Sucre y 5 de Junio, Babahoyo, Ecuador. La web pública, administración y asistente se conectan a una API .NET y guardan los datos en PostgreSQL de Supabase.
 
+La actualización de septiembre incorpora Alma con voz opcional, presentación y logo editables, WhatsApp directo, pagos virtuales con verificación administrativa y correos transaccionales. Ver **[MEJORAS-PREMIUM.md](MEJORAS-PREMIUM.md)** para configuración, modo de prueba y activación de producción. El envío de correos está inicialmente pausado.
+
 ## Abrir en este equipo
 
 - Web: http://127.0.0.1:3000
@@ -26,13 +28,13 @@ Las credenciales y la conexión suministrada están exclusivamente en `backend/a
 
 El perfil profesional y las fotografías son los aportados por el usuario. Las áreas iniciales y los textos son contenido editable propuesto para el despacho; no se han inventado años de experiencia, títulos académicos, testimonios, cifras de éxito, honorarios ni teléfonos. No fue posible leer los perfiles sociales mediante consulta web. El feed incluye una bienvenida original, no videos ficticios: el administrador debe pegar los enlaces de sus publicaciones reales o subir sus videos.
 
-## Andrea: asistente programada, sin IA
+## Alma: asistente programada con voz opcional
 
 La conversación escrita utiliza reglas de intención en español y una secuencia de estados. No utiliza un LLM, embeddings, claves de OpenAI ni servicios de generación. Puede mostrar servicios y ubicación, buscar publicaciones, consultar horarios, registrar una consulta o solicitud de cita y consultar su seguimiento privado. No interpreta cuestiones jurídicas ni improvisa asesoría; dirige al abogado los asuntos que necesitan revisión.
 
-Las solicitudes requieren revisión y aceptación del tratamiento de datos antes del envío. Se devuelve una referencia con una clave privada aleatoria. La misma clave y una clave de idempotencia permiten reintentar sin duplicar el registro. El cliente puede guardar el comprobante y consultar novedades; la página de seguimiento consulta cambios cada 15 segundos mientras está visible. **No se envían correos, SMS, mensajes de WhatsApp ni notificaciones cuando la web está cerrada.** Las novedades se muestran dentro del portal.
+Las solicitudes requieren correo electrónico, revisión y aceptación del tratamiento de datos antes del envío. Se devuelve una referencia con una clave privada aleatoria. La misma clave y una clave de idempotencia permiten reintentar sin duplicar el registro. El cliente puede guardar el comprobante y consultar novedades; la página de seguimiento consulta cambios cada 15 segundos mientras está visible. Las notificaciones de recepción, aprobación, transferencia, agendamiento, cambios públicos y cierre se guardan en una cola transaccional para cliente y administrador. Brevo las procesa cuando se activa el envío. WhatsApp abre una conversación directa con el abogado, sin automatización de mensajes.
 
-En navegadores que implementan WebMCP se registran seis herramientas mediante `document.modelContext` (con detección del API anterior). El chat usa el mismo registro de funciones cuando WebMCP no está disponible. No requiere flags para funcionar por escrito. No incluye reconocimiento de voz.
+En navegadores que implementan WebMCP se registran seis herramientas mediante `document.modelContext` (con detección del API anterior). El chat usa el mismo registro de funciones cuando WebMCP no está disponible. El dictado mediante Web Speech API llena el mensaje para revisarlo antes de enviar; SpeechSynthesis lee las respuestas cuando el usuario lo activa. Depende del navegador y del permiso de micrófono; no añade un servicio de voz de pago ni un LLM. Algunos navegadores procesan el audio en servidores externos. El nombre se cambia en Configuración.
 
 Además, la API expone **MCP Streamable HTTP** con el SDK oficial de C# en `/mcp`, protegido por `Authorization: Bearer MCP_API_KEY`. El token debe mantenerse en el cliente MCP autorizado o servidor, nunca incluirse en JavaScript público. Herramientas: `list_services`, `get_office`, `search_posts`, `check_availability`, `create_consultation`, `track_request`. No expone herramientas de administración ni permite listar solicitudes de clientes. Puede utilizarse desde un cliente de protocolo sin un modelo de IA.
 
@@ -91,6 +93,9 @@ Completa en Render:
 | `MCP_API_KEY` | Token aleatorio de al menos 32 caracteres |
 | `ALLOWED_ORIGINS` | URL exacta del frontend Vercel; varias separadas por coma, sin barra final |
 | `API_PUBLIC_URL` | URL HTTPS de esta API en Render, para subir archivos directamente |
+| `BREVO_API_KEY` | Clave privada de Brevo, exclusivamente en el backend |
+| `NOTIFICATION_ENCRYPTION_KEY` | 32 bytes aleatorios en base64; estable y respaldada, ver MEJORAS-PREMIUM.md |
+| `EMAIL_DELIVERY_ENABLED` | `true`; el administrador activa además el envío en Configuración |
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
 | `ASPNETCORE_URLS` | `http://0.0.0.0:10000` |
 
@@ -126,5 +131,7 @@ Verifica primero `https://TU-API.onrender.com/api/health` y luego `https://TU-WE
 Los archivos se suben directamente a la API en Render, sin atravesar las funciones de Vercel. El administrador solicita primero un permiso aleatorio de un solo uso, válido por dos minutos; CORS solo permite los orígenes autorizados. El servidor valida y guarda hasta 25 MB por archivo. `API_PUBLIC_URL` y `API_INTERNAL_URL` deben usar el mismo origen de API para que la política de seguridad del frontend permita la carga. Las peticiones normales continúan pasando por el proxy del mismo origen.
 
 ### 3. Antes de publicar
+
+La ampliación de trayectoria, galería, foto del edificio, casos ganados y programa de apoyo mensual se administra según [TRAYECTORIA-Y-APOYO.md](TRAYECTORIA-Y-APOYO.md). Configura el envío de Brevo y los pagos siguiendo [MEJORAS-PREMIUM.md](MEJORAS-PREMIUM.md).
 
 Revisa la biografía, áreas de servicio y horarios propuestos; completa teléfono/correo si los quieres públicos; carga videos reales y verifica sus permisos de inserción. Confirma los datos del aviso de privacidad del despacho. El portal no promete resultados legales ni confirma automáticamente una cita.

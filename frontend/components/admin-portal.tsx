@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
   LayoutDashboard,
@@ -80,6 +81,10 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { ServiceIcon } from './service-icon';
+import { EditorialAdmin } from './editorial-admin';
+import { SolidarityAdmin } from './solidarity-admin';
+import { PremiumSettings } from './premium-settings';
+import { NotificationAdmin } from './notification-admin';
 const sections = [
   { id: 'overview', label: 'Vista general', icon: LayoutDashboard },
   { id: 'requests', label: 'Consultas y clientes', icon: Inbox },
@@ -87,11 +92,14 @@ const sections = [
   { id: 'services', label: 'Servicios', icon: BriefcaseBusiness },
   { id: 'posts', label: 'Vitrina legal', icon: Video },
   { id: 'promotions', label: 'Promociones', icon: Megaphone },
+  { id: 'editorial', label: 'Perfil y casos ganados', icon: ShieldCheck },
+  { id: 'solidarity', label: 'Apoyo solidario', icon: Inbox },
   { id: 'media', label: 'Biblioteca multimedia', icon: ImageIcon },
   { id: 'settings', label: 'Configuración', icon: Settings },
   { id: 'activity', label: 'Actividad e integraciones', icon: Activity },
 ];
 export function AdminPortal() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(undefined),
     [login, setLogin] = useState({ email: '', password: '' }),
     [error, setError] = useState(''),
@@ -193,15 +201,36 @@ export function AdminPortal() {
       await refresh();
     }, 'Contenido guardado. La web pública ya muestra los cambios publicados.');
   }
-  async function upload(file: File, target?: 'cover' | 'url' | 'heroImage') {
+  async function upload(
+    file: File,
+    target?:
+      | 'cover'
+      | 'url'
+      | 'heroImage'
+      | 'logoUrl'
+      | 'introVideoUrl'
+      | 'introPoster'
+      | 'buildingImage'
+      | 'profileImage',
+  ) {
     if (file.size > 25 * 1024 * 1024) {
       setError('El tamaño máximo por archivo es 25 MB.');
       return;
     }
     await action(async () => {
       const m = await uploadMedia(file);
-      if (target === 'heroImage')
-        setSettings((s: any) => ({ ...s, heroImage: m.url }));
+      if (
+        target &&
+        [
+          'heroImage',
+          'logoUrl',
+          'introVideoUrl',
+          'introPoster',
+          'buildingImage',
+          'profileImage',
+        ].includes(target)
+      )
+        setSettings((s: any) => ({ ...s, [target]: m.url }));
       else if (target) setEditor((s) => (s ? { ...s, [target]: m.url } : s));
       setMedia(await api('/admin/media'));
     }, 'Archivo guardado en Supabase.');
@@ -865,6 +894,8 @@ export function AdminPortal() {
               )}
             </>
           )}
+          {tab === 'editorial' && <EditorialAdmin />}
+          {tab === 'solidarity' && <SolidarityAdmin />}
           {tab === 'media' && (
             <>
               <label className="upload-zone">
@@ -935,6 +966,7 @@ export function AdminPortal() {
                       }),
                     });
                     await refresh();
+                    router.refresh();
                   }, 'Configuración guardada. La web y la asistente usan los nuevos datos.');
                 }}
               >
@@ -995,6 +1027,13 @@ export function AdminPortal() {
                     ]}
                   />
                 </label>
+                <PremiumSettings
+                  settings={settings}
+                  setSettings={setSettings}
+                  media={media}
+                  upload={upload}
+                  busy={busy}
+                />
                 <h2 className="settings-divider">Disponibilidad para citas</h2>
                 <p className="muted">
                   Turnos de una hora; solicitudes desde una hora de anticipación
@@ -1141,7 +1180,9 @@ export function AdminPortal() {
             <>
               <section className="admin-panel integration-panel">
                 <div className="panel-heading">
-                  <h2>Andrea · Asistente programada</h2>
+                  <h2>
+                    {settings.assistantName || 'Alma'} · Asistente del despacho
+                  </h2>
                   <span className="status-badge confirmado">
                     Funciones conectadas
                   </span>
@@ -1198,6 +1239,7 @@ export function AdminPortal() {
                   </div>
                 )}
               </section>
+              <NotificationAdmin />
             </>
           )}
         </div>
@@ -1248,11 +1290,113 @@ export function AdminPortal() {
                     label="Estado de la solicitud"
                     value={selected.status}
                     onChange={(v) => setSelected({ ...selected, status: v })}
-                    options={Object.entries(statusLabels).map(
-                      ([value, label]) => ({ value, label }),
-                    )}
+                    options={Object.entries(statusLabels)
+                      .filter(
+                        ([key]) =>
+                          !key.startsWith('solidarity_') &&
+                          key !== 'pago_revision',
+                      )
+                      .map(([value, label]) => ({ value, label }))}
                   />
                 </label>
+                {selected.mode === 'virtual' && selected.appointmentAt && (
+                  <div className="payment-panel">
+                    <h3>Pago y videollamada</h3>
+                    <p>
+                      {selected.paymentTest
+                        ? 'DE PRUEBA · no admite pagos reales'
+                        : `USD ${Number(selected.paymentAmount || 0).toFixed(2)} · ${selected.paymentStatus}`}
+                    </p>
+                    {selected.paymentReference && (
+                      <p className="pre-line">
+                        Referencia enviada: {selected.paymentReference}
+                      </p>
+                    )}
+                    {selected.paymentVerifiedBy && (
+                      <p className="form-note">
+                        Verificado por {selected.paymentVerifiedBy} ·{' '}
+                        {formatDate(selected.paymentVerifiedAt)}
+                      </p>
+                    )}
+                    <label className="field-label">
+                      Enlace de Google Meet o Zoom
+                      <input
+                        className="field"
+                        type="url"
+                        value={selected.meetingUrl || ''}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            meetingUrl: e.target.value,
+                          })
+                        }
+                        placeholder="https://meet.google.com/…"
+                      />
+                    </label>
+                    {selected.paymentStatus !== 'verificado' &&
+                      !['cancelado', 'completado'].includes(
+                        selected.status,
+                      ) && (
+                        <>
+                          <label className="field-label">
+                            Referencia comprobada en el banco
+                            <input
+                              className="field"
+                              value={selected.verificationNote || ''}
+                              maxLength={500}
+                              onChange={(e) =>
+                                setSelected({
+                                  ...selected,
+                                  verificationNote: e.target.value,
+                                })
+                              }
+                              placeholder="Transacción, valor y fecha del ingreso"
+                            />
+                          </label>
+                          <Check
+                            checked={!!selected.verifyPayment}
+                            onChange={(v) =>
+                              setSelected({ ...selected, verifyPayment: v })
+                            }
+                          >
+                            Comprobé el ingreso y el valor en la cuenta bancaria
+                            del despacho.
+                          </Check>
+                          <button
+                            type="button"
+                            className="btn gold"
+                            disabled={
+                              busy ||
+                              selected.paymentTest ||
+                              !selected.verifyPayment ||
+                              !selected.meetingUrl ||
+                              (selected.verificationNote || '').length < 8
+                            }
+                            onClick={() =>
+                              action(async () => {
+                                await api('/admin/requests/' + selected.id, {
+                                  method: 'PUT',
+                                  body: JSON.stringify({
+                                    ...selected,
+                                    status: 'confirmado',
+                                  }),
+                                });
+                                setSelected(null);
+                                await refresh();
+                              }, 'Pago verificado y cita agendada. Se generaron avisos para el cliente y el administrador.')
+                            }
+                          >
+                            Verificar pago y agendar
+                          </button>
+                        </>
+                      )}
+                    <p className="form-note">
+                      Una referencia o captura del cliente no acredita el pago.
+                      Verifica el ingreso en el banco. Crea el enlace en tu
+                      cuenta de Meet o Zoom y pégalo aquí.
+                    </p>
+                  </div>
+                )}
                 <label className="field-label">
                   Novedad para el cliente
                   <textarea

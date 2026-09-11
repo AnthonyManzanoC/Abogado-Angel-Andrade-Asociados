@@ -1,30 +1,25 @@
-# Verificación de entrega
+# Verificación de la actualización premium
 
-Fecha: 7 de septiembre de 2026.
+Fecha: 10 de septiembre de 2026 (Ecuador).
 
-## Resultado
+- 44 verificaciones HTTP, PostgreSQL, CMS, reservas, acceso y MCP de la suite existente aprobadas.
+- 26 verificaciones adicionales de pagos, privacidad, cifrado, notificaciones, reintentos y sandbox de Brevo aprobadas.
+- 16 verificaciones de funciones del cliente aprobadas.
+- Backend .NET 9 compilado sin advertencias ni errores; frontend Next.js 16.3.4 compilado con comprobación TypeScript.
+- La API real de Brevo aceptó en sandbox una plantilla generada por el servicio. El remitente suministrado aparece activo. No se enviaron correos reales.
+- Migración 003 aplicada en andrade_portal: conserva datos anteriores, agrega estados, datos de pago y cola cifrada con RLS. No se alteraron las migraciones anteriores.
+- Pruebas temporales eliminadas; la auditoría puede conservar las acciones técnicas de configuración de la suite existente.
 
-- 44 verificaciones HTTP y de integración aprobadas en `tests/Program.cs`.
-- 16 verificaciones de funciones del cliente aprobadas en `tests/client-functions.test.cjs`.
-- Frontend Next.js 16.3.4: compilación de producción y comprobación TypeScript correctas.
-- Backend .NET 9: compilación y publicación correctas, sin errores ni advertencias.
-- npm y NuGet: cero vulnerabilidades reportadas en las dependencias instaladas al comprobarlas.
-- Inicio local probado mediante `scripts/Start-Local.ps1`; API y web siguen ejecutándose como procesos de fondo.
-- PostgreSQL de Supabase: conexión TLS con certificado verificado, dos migraciones aplicadas en el esquema `andrade_portal` y diez tablas protegidas con RLS.
-- Configuración privada excluida de Git y del resultado publicado de .NET. Certificado CA y ambas migraciones incluidos en el resultado de publicación.
+Se verificaron la exigencia de pago para agendar una consulta virtual, el bloqueo de pagos en modo de prueba, la validación de dominios de reunión, el enlace privado de regreso, la separación de avisos entre cliente y administrador, la ausencia de correos al editar solo notas internas, la idempotencia, la reversión de verificaciones incompletas, la cancelación y liberación del horario. Un transporte HTTP simulado verificó aceptación, límites de cuota y respuestas ambiguas; no se procesaron pagos reales.
 
-## Flujos verificados
+La cola tiene entrega inicialmente pausada. La aceptación de una plantilla en sandbox no verifica entrega en bandeja ni conservación de enlaces por el cliente de correo. No se probaron micrófono físico ni video de presentación: el abogado aún debe grabarlo. El reconocimiento de voz depende del navegador.
 
-Acceso administrativo y cookie HttpOnly; rechazo de sesión ausente, contraseña incorrecta y origen no autorizado; edición del CMS y visibilidad pública; aislamiento de borradores; paginación sin duplicados; carga de archivos y reproducción por rangos; carga directa con CORS y permisos de un solo uso; rechazo de archivos no admitidos; validación de consentimiento, fechas y disponibilidad; idempotencia; exclusión de reservas simultáneas; seguimiento con clave privada; separación de notas internas y públicas; actualización y cancelación; liberación del horario; negociación, descubrimiento y ejecución con el SDK MCP; comprobación de persistencia directamente en PostgreSQL; todas las rutas públicas y el paso de sesión por el proxy del frontend.
+La vista previa local usa http://127.0.0.1:3002 y la API de revisión http://127.0.0.1:5083, sin detener los servidores originales. La configuración estándar sigue usando los puertos 3000/5080. El push del código no verifica por sí mismo la publicación en Vercel y Render. No se efectuó una revisión visual automatizada del sitio en navegadores.
 
-En el cliente se verificaron las intenciones en español, prioridades, tildes, reinicio explícito, claves aleatorias, fragmentos de seguimiento, dominios y protocolos permitidos para inserción de videos, el uso de las mismas funciones por la asistente y el formulario, el rechazo de herramientas desconocidas y la compatibilidad sin WebMCP.
+## Ampliación editorial y comunitaria
 
-Las solicitudes, publicaciones y archivos temporales creados para las pruebas se eliminaron. La auditoría puede conservar entradas técnicas de las comprobaciones.
+Migración 004 aplicada: formación, logros, galería, casos y postulaciones solidarias privadas con RLS. Se aprobaron 26 comprobaciones adicionales de privacidad, consentimiento, selección concurrente única, cierre, retiro, idempotencia y publicación desde el CMS. Los datos de prueba se eliminaron. Se conserva la verificación anterior de reservas, seguimiento, pagos, correos simulados y MCP. La suite de cliente incluye además la intención de apoyo solidario del asistente (17 comprobaciones).
 
-## Alcance
+El lint estricto continúa reportando reglas de tipado, React y accesibilidad; no se considera aprobado. Build y pruebas funcionales son comprobaciones independientes. Los detalles y límites de la convocatoria están en TRAYECTORIA-Y-APOYO.md.
 
-No se publicó en Vercel ni Render; se entregaron configuración e instrucciones de despliegue. No se accedió al contenido privado de redes sociales ni se fabricaron videos. La reproducción externa depende de la disponibilidad y permisos de las publicaciones que incorpore el administrador.
-
-La asistente funciona por texto mediante reglas; no incluye reconocimiento de voz. Las novedades se presentan dentro de la web, no se envían por correo, SMS o WhatsApp.
-
-La validación fue de código, compilación, HTTP, protocolo y base de datos. No se ejecutó una revisión visual automática en navegadores ni se probó un despliegue remoto real.
+Consultar MEJORAS-PREMIUM.md para la activación y los límites operativos.

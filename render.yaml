@@ -25,3 +25,9 @@ services:
         sync: false
       - key: API_PUBLIC_URL
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: NOTIFICATION_ENCRYPTION_KEY
+        sync: false
+      - key: EMAIL_DELIVERY_ENABLED
+        value: "true"

@@ -1,8 +1,15 @@
 import { api } from './api';
 export const statusLabels: Record<string, string> = {
+  solidarity_recibido: 'Postulación recibida',
+  solidarity_revision: 'Postulación en revisión',
+  solidarity_seleccionado: 'Seleccionada para apoyo gratuito',
+  solidarity_no_seleccionado: 'No seleccionada este mes',
   recibido: 'Recibida',
   revision: 'En revisión',
-  confirmado: 'Confirmada',
+  aprobado: 'Aprobada',
+  pendiente_pago: 'Pendiente de pago',
+  confirmado: 'Agendada',
+  pago_revision: 'Transferencia en revisión',
   completado: 'Completada',
   cancelado: 'Cancelada',
 };
@@ -90,6 +97,7 @@ export const toolDefinitions = [
       },
       required: [
         'name',
+        'email',
         'phone',
         'message',
         'consent',
@@ -196,6 +204,8 @@ export function registerWebMCP() {
 export function detectIntent(text: string) {
   const t = normalize(text);
   if (/^(cancelar|reiniciar|empezar de nuevo)$/.test(t)) return 'reset';
+  if (/(solidari|caso gratis|gratuit|pro bono|vulnerab)/.test(t))
+    return 'solidarity';
   if (/(seguimiento|estado|solicitud|codigo)/.test(t)) return 'track';
   if (/(cita|agendar|reservar|agenda)/.test(t)) return 'appointment';
   if (/(ubicacion|direccion|donde|llegar|oficina|horario|contacto)/.test(t))

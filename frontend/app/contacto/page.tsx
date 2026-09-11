@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { ArrowUpRight, MapPin, Clock, Mail, Phone } from 'lucide-react';
 import { getPublic } from '@/lib/api';
+import { whatsappLink } from '@/lib/contact';
 export const metadata = { title: 'Contacto y ubicación' };
 export default async function Page() {
   const { settings: s } = await getPublic();
   const address = s.address || 'Edificio Alavama, calle Sucre y 5 de Junio';
-  const map = encodeURIComponent(address + ', Babahoyo, Ecuador');
+  const map = encodeURIComponent(address + ', ' + (s.city || 'Babahoyo, Ecuador'));
   return (
     <section className="wrap page-section">
       <div className="page-heading">
@@ -58,22 +59,49 @@ export default async function Page() {
           <Link href="/consulta" className="btn gold">
             Agenda tu visita <ArrowUpRight size={18} />
           </Link>
+          {whatsappLink(s.whatsapp) && (
+            <a
+              className="btn outline contact-whatsapp"
+              href={whatsappLink(s.whatsapp)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Conversar por WhatsApp <ArrowUpRight size={18} />
+            </a>
+          )}
         </div>
-        <div className="map-panel">
-          <iframe
-            src={'https://www.google.com/maps?q=' + map + '&output=embed'}
-            title="Mapa de ubicación del despacho en Babahoyo"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-          <a
-            className="map-link"
-            href={'https://www.google.com/maps/search/?api=1&query=' + map}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Ver indicaciones en Google Maps <ArrowUpRight size={17} />
-          </a>
+        <div className="office-location">
+          {s.buildingImage && (
+            <figure className="office-photo">
+              <img
+                src={s.buildingImage}
+                alt={
+                  s.buildingCaption ||
+                  'Edificio Alavama, ubicación del despacho'
+                }
+                loading="lazy"
+              />
+              <figcaption>
+                {s.buildingCaption || 'Edificio Alavama · Babahoyo'}
+              </figcaption>
+            </figure>
+          )}
+          <div className="map-panel">
+            <iframe
+              src={'https://www.google.com/maps?q=' + map + '&output=embed'}
+              title="Mapa de ubicación del despacho en Babahoyo"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <a
+              className="map-link"
+              href={'https://www.google.com/maps/search/?api=1&query=' + map}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ver indicaciones en Google Maps <ArrowUpRight size={17} />
+            </a>
+          </div>
         </div>
       </div>
     </section>

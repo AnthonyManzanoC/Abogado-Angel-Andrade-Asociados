@@ -12,7 +12,7 @@ var config=new ConfigurationBuilder().AddJsonFile(Path.Combine(root,"backend","a
 config["PGSSLROOTCERT"]=Path.Combine(root,"backend","certs","supabase-ca.crt");
 await using var db=new Database(config);
 using var handler=new HttpClientHandler{CookieContainer=new CookieContainer()};
-using var client=new HttpClient(handler){BaseAddress=new Uri("http://127.0.0.1:5080"),Timeout=TimeSpan.FromSeconds(35)};
+using var client=new HttpClient(handler){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_API_URL") ?? "http://127.0.0.1:5080"),Timeout=TimeSpan.FromSeconds(35)};
 client.DefaultRequestHeaders.Add("X-Portal-Client","web");client.DefaultRequestHeaders.Add("Origin","http://127.0.0.1:3000");
 var runId=Guid.NewGuid().ToString("N");var email="test-"+runId+"@example.invalid";var contentIds=new List<string>();Guid? mediaId=null;string? sessionHash=null;var passed=0;
 void Check(bool ok,string label){if(!ok)throw new Exception("FAIL: "+label);Console.WriteLine("PASS: "+label);passed++;}
@@ -58,7 +58,9 @@ try{
  var init=await Mcp("initialize",new{protocolVersion="2025-11-25",capabilities=new{},clientInfo=new{name="andrade-integration-test",version="1.0"}},1);Check(init["result"]?["protocolVersion"]!=null,"Negociación MCP con SDK oficial");var tools=await Mcp("tools/list",new{},2);Check(tools["result"]!["tools"]!.AsArray().Count==6,"Seis herramientas MCP descubiertas");var result=await Mcp("tools/call",new{name="list_services",arguments=new{}},3);Check(result["result"]?["content"]!=null&&result["result"]?["isError"]?.ToString()!="true","Ejecución MCP de servicios");
  var schema=await db.Json("SELECT jsonb_build_object('tables',count(*),'secured',bool_and(relrowsecurity)) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='andrade_portal' AND c.relkind='r'");Check(schema!["tables"]!.GetValue<int>()>=9&&schema["secured"]!.GetValue<bool>(),"Tablas de Supabase con RLS activado");
  var persisted=await db.Json("SELECT jsonb_build_object('count',count(*)) FROM andrade_portal.requests WHERE email=@email",("email",email));Check(persisted!["count"]!.GetValue<int>()==2,"Solicitudes confirmadas directamente en PostgreSQL");
- using var web=new HttpClient(handler,false){BaseAddress=new Uri("http://127.0.0.1:3000"),Timeout=TimeSpan.FromSeconds(60)};foreach(var path in new[]{"/","/firma","/servicios","/servicios/familia","/vitrina","/consulta","/seguimiento","/contacto","/privacidad","/admin","/api/health","/api/admin/me"})Check((await web.GetAsync(path)).IsSuccessStatusCode,"Ruta frontend "+path);
+ using var web=new HttpClient(handler,false){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_WEB_URL") ?? "http://127.0.0.1:3000"),Timeout=TimeSpan.FromSeconds(60)};foreach(var path in new[]{"/","/firma","/servicios","/servicios/familia","/vitrina","/consulta","/seguimiento","/contacto","/privacidad","/admin","/api/health","/api/admin/me"})Check((await web.GetAsync(path)).IsSuccessStatusCode,"Ruta frontend "+path);
+ await PremiumChecks.Run(db,config);
+ await CommunityChecks.Run(db,config,client);
  Console.WriteLine($"\n{passed} verificaciones completadas. Se eliminarán todos los registros temporales.");
 }finally{
  await db.Execute("DELETE FROM andrade_portal.requests WHERE email=@email",("email",email));

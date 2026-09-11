@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Choice, Check } from './form-controls';
 import { Content } from '@/lib/api';
+import { ReceiptEmail } from './notification-status';
 import {
   credentials,
   executePortalTool,
@@ -23,9 +24,13 @@ import {
 export function RequestForm({
   services,
   initialService = 'general',
+  paymentTestMode = true,
+  virtualFee = 0,
 }: {
   services: Content[];
   initialService?: string;
+  paymentTestMode?: boolean;
+  virtualFee?: number;
 }) {
   const [step, setStep] = useState(1),
     [type, setType] = useState('appointment'),
@@ -145,6 +150,17 @@ export function RequestForm({
           Consulta las novedades en tu espacio de seguimiento.
         </p>
         <div className="receipt-code">{receipt.reference}</div>
+        <ReceiptEmail
+          reference={receipt.reference}
+          token={keys.trackingToken}
+          email={form.email}
+        />
+        {receipt.status === 'pendiente_pago' && (
+          <p className="notice">
+            Consulta las indicaciones de pago en tu seguimiento. La cita virtual
+            se agenda después de verificar el ingreso bancario.
+          </p>
+        )}
         <p className="muted">
           Guarda el comprobante: contiene tu enlace y clave privada. Solo quien
           tenga esa clave podrá consultar la solicitud.
@@ -226,6 +242,13 @@ export function RequestForm({
             </label>
             {type === 'appointment' && (
               <>
+                {form.mode === 'virtual' && (
+                  <p className="notice">
+                    {paymentTestMode
+                      ? 'Las citas virtuales están en demostración. No realices transferencias; el despacho coordinará contigo los siguientes pasos.'
+                      : `Consulta virtual: USD ${Number(virtualFee).toFixed(2)}. La cita se agenda al comprobar la transferencia. Recibirás los datos bancarios en tu seguimiento privado.`}
+                  </p>
+                )}
                 <label className="field-label">
                   Fecha de la consulta
                   <input
@@ -319,7 +342,7 @@ export function RequestForm({
                 />
               </label>
               <label className="field-label">
-                Correo <span className="muted">(opcional)</span>
+                Correo para tu enlace y notificaciones
                 <input
                   className="field"
                   type="email"
@@ -327,6 +350,7 @@ export function RequestForm({
                   value={form.email}
                   onChange={(e) => change('email', e.target.value)}
                   maxLength={200}
+                  required
                   placeholder="nombre@correo.com"
                 />
               </label>

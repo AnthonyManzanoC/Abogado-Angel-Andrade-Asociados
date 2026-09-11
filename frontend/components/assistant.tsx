@@ -9,6 +9,10 @@ import {
   CheckCircle2,
   LoaderCircle,
   X,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import {
   Sheet,
@@ -18,6 +22,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Check } from './form-controls';
+import { useVoice } from '@/hooks/use-voice';
 import {
   credentials,
   detectIntent,
@@ -36,17 +41,19 @@ type Message = {
   link?: string;
   linkLabel?: string;
 };
-const welcome: Message = {
+const greeting = (name: string): Message => ({
   role: 'assistant',
-  text: 'Hola, soy Andrea, la asistente del despacho. Puedo ayudarte a solicitar una cita, enviar una consulta o revisar su estado. ¿Qué necesitas hoy?',
+  text: `Hola, soy ${name}, la asistente del despacho. Puedo ayudarte a solicitar una cita, enviar una consulta o revisar su estado. ¿Qué necesitas hoy?`,
   choices: [
     'Agendar una cita',
     'Ver servicios',
     'Consultar mi solicitud',
     'Cómo llegar',
+    'Apoyo solidario',
   ],
-};
-export function Assistant() {
+});
+export function Assistant({ name = 'Alma' }: { name?: string }) {
+  const welcome = greeting(name);
   const [open, setOpen] = useState(false),
     [messages, setMessages] = useState<Message[]>([welcome]),
     [input, setInput] = useState(''),
@@ -58,6 +65,16 @@ export function Assistant() {
   const bottom = useRef<HTMLDivElement>(null),
     [services, setServices] = useState<any[]>([]);
   const draftRef = useRef<any>({});
+  useEffect(() => {
+    setMessages((m) =>
+      m.length === 1 && m[0].role === 'assistant' ? [greeting(name)] : m,
+    );
+  }, [name]);
+  const voice = useVoice((text) => {
+    if (!busy && step !== 'review' && step !== 'track-token') {
+      setInput(text);
+    }
+  }, open);
   useEffect(() => registerWebMCP(), []);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -67,11 +84,13 @@ export function Assistant() {
     choices?: string[],
     link?: string,
     linkLabel?: string,
-  ) =>
+  ) => {
+    voice.speak(text);
     setMessages((m) => [
       ...m,
       { role: 'assistant', text, choices, link, linkLabel },
     ]);
+  };
   const update = (key: string, value: any) => {
     draftRef.current = { ...draftRef.current, [key]: value };
     setDraft(draftRef.current);
@@ -130,16 +149,15 @@ export function Assistant() {
         }
         update('phone', text);
         setStep('email');
-        say('¿Quieres incluir un correo electrónico?', ['Omitir correo']);
+        say(
+          '¿Cuál es tu correo? Allí recibirás el enlace privado de seguimiento y las novedades. Escríbelo para evitar errores de dictado.',
+        );
       } else if (step === 'email') {
-        if (
-          normalize(text) !== 'omitir correo' &&
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)
-        ) {
-          say('Escribe un correo válido o selecciona «Omitir correo».');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+          say('Escribe un correo válido para recibir tus notificaciones.');
           return;
         }
-        update('email', normalize(text) === 'omitir correo' ? '' : text);
+        update('email', text);
         setStep('service');
         say('¿Con qué área se relaciona tu consulta?', [
           'Orientación inicial',
@@ -273,6 +291,14 @@ export function Assistant() {
         );
       } else {
         switch (detectIntent(text)) {
+          case 'solidarity':
+            say(
+              'El despacho tiene un programa mensual de apoyo gratuito. El abogado revisa cada postulación de forma privada y selecciona un caso según necesidad y viabilidad. Consulta la convocatoria y sus condiciones antes de enviar tu historia.',
+              undefined,
+              '/apoyo',
+              'Conocer el apoyo solidario',
+            );
+            break;
           case 'appointment':
             await begin(true);
             break;
@@ -369,7 +395,10 @@ export function Assistant() {
           (r.appointmentAt
             ? 'El horario está pendiente de confirmación. '
             : '') +
-          'Guarda el enlace privado de seguimiento para consultar las novedades del despacho.',
+          'El correo de recepción queda en la cola de notificaciones. En tu seguimiento podrás comprobar el estado del envío. Guarda también este enlace privado para regresar.' +
+          (r.status === 'pendiente_pago'
+            ? ' La cita virtual requiere verificar el pago antes de agendar.'
+            : ''),
         undefined,
         trackingLink(r.reference, draftRef.current.trackingToken),
         'Guardar y abrir mi seguimiento',
@@ -393,7 +422,7 @@ export function Assistant() {
           <MessageCircle size={21} />
         </span>
         <span>
-          ¿En qué te ayudo?<small>Andrea · Asistente del despacho</small>
+          ¿En qué te ayudo?<small>{name} · Asistente del despacho</small>
         </span>
         <span className="assistant-online" />
       </button>
@@ -404,9 +433,9 @@ export function Assistant() {
               <MessageCircle size={22} />
             </span>
             <div>
-              <SheetTitle>Andrea</SheetTitle>
+              <SheetTitle>{name}</SheetTitle>
               <SheetDescription>
-                Asistente del despacho · Sin IA
+                Citas, consultas y seguimiento
               </SheetDescription>
             </div>
             <button
@@ -509,7 +538,7 @@ export function Assistant() {
                   ? 'Tu clave privada…'
                   : 'Escribe lo que necesitas…'
               }
-              aria-label="Mensaje para Andrea"
+              aria-label={'Mensaje para ' + name}
               disabled={busy || step === 'review'}
               maxLength={3000}
             />
@@ -520,6 +549,40 @@ export function Assistant() {
               <ArrowUp size={19} />
             </button>
           </form>
+          <div className="voice-controls">
+            <button
+              type="button"
+              className="text-link"
+              disabled={
+                !voice.supported ||
+                busy ||
+                step === 'review' ||
+                step === 'track-token'
+              }
+              onClick={voice.dictate}
+              aria-pressed={voice.listening}
+            >
+              {voice.listening ? <MicOff size={16} /> : <Mic size={16} />}{' '}
+              {voice.listening ? 'Detener dictado' : 'Dictar mensaje'}
+            </button>
+            <button
+              type="button"
+              className="text-link"
+              onClick={voice.toggleReading}
+              aria-pressed={voice.readAloud}
+            >
+              {voice.readAloud ? <Volume2 size={16} /> : <VolumeX size={16} />}{' '}
+              {voice.readAloud ? 'Silenciar respuestas' : 'Escuchar respuestas'}
+            </button>
+          </div>
+          <p className="assistant-footnote" role="status">
+            {voice.notice ||
+              (voice.listening
+                ? 'Escuchando…'
+                : voice.supported
+                  ? 'Revisa el dictado antes de enviarlo. El navegador puede procesar audio en sus servidores.'
+                  : 'Dictado no disponible en este navegador. Puedes escribir.')}
+          </p>
           <p className="assistant-footnote">
             Gestiones programadas. La asesoría la brinda el abogado.
           </p>

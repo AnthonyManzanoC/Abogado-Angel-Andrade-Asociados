@@ -9,6 +9,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { emailStatusLabels } from './notification-status';
 import {
   executePortalTool,
   formatDate,
@@ -31,6 +32,72 @@ export function Tracking() {
     [notice, setNotice] = useState(''),
     [cancel, setCancel] = useState(false);
   const last = useRef('');
+  const [bankReference, setBankReference] = useState('');
+  async function reportPayment(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api('/track/payment', {
+        method: 'POST',
+        body: JSON.stringify({ reference, token, bankReference }),
+      });
+      setBankReference('');
+      await load();
+      setNotice(
+        'Referencia enviada al despacho. La cita se agenda cuando se verifique el ingreso.',
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(
+        window.location.origin +
+          '/seguimiento#' +
+          new URLSearchParams({ ref: reference, key: token }),
+      );
+      setNotice('Enlace privado copiado. Guárdalo en un lugar seguro.');
+    } catch {
+      setNotice(
+        'No se pudo copiar. Conserva la referencia y clave de tu comprobante.',
+      );
+    }
+  }
+  function saveCalendar() {
+    const start = new Date(result.appointmentAt),
+      end = new Date(start.getTime() + 3600000);
+    const stamp = (date: Date) =>
+      date
+        .toISOString()
+        .replace(/[-:]/g, '')
+        .replace(/\.\d{3}/, '');
+    const content = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Andrade//Agenda//ES',
+      'BEGIN:VEVENT',
+      `UID:${result.reference}@andrade`,
+      `DTSTAMP:${stamp(new Date())}`,
+      `DTSTART:${stamp(start)}`,
+      `DTEND:${stamp(end)}`,
+      `SUMMARY:Consulta Ab. Andrade - ${result.reference}`,
+      `DESCRIPTION:Referencia ${result.reference}. Consulta tu enlace privado de seguimiento para novedades.`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const url = URL.createObjectURL(
+      new Blob([content], { type: 'text/calendar;charset=utf-8' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = result.reference + '.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   async function load(ref = reference, key = token, quiet = false) {
     if (!quiet) setBusy(true);
     try {
@@ -157,8 +224,27 @@ export function Tracking() {
               </button>
             </div>
             <span className={'status-badge ' + result.status}>
-              {statusLabels[result.status]}
+              {result.solidarity && result.status !== 'cancelado'
+                ? statusLabels['solidarity_' + result.solidarity.decision]
+                : statusLabels[result.status]}
             </span>
+            {result.solidarity && (
+              <p className="notice">
+                Programa de apoyo solidario · convocatoria{' '}
+                {result.solidarity.period}. No se requiere pago. Conserva este
+                enlace para conocer la revisión y los siguientes pasos.
+              </p>
+            )}
+            <div className="button-row tracking-actions">
+              <button className="btn outline" onClick={copyLink}>
+                Guardar enlace para regresar
+              </button>
+              {result.status === 'confirmado' && (
+                <button className="btn outline" onClick={saveCalendar}>
+                  Añadir a mi calendario
+                </button>
+              )}
+            </div>
             {notice && (
               <div className="notice" role="status">
                 {notice}
@@ -178,6 +264,82 @@ export function Tracking() {
                   El horario solicitado queda sujeto a confirmación.
                 </p>
               )}
+            {result.paymentStatus &&
+              result.paymentStatus !== 'no_requerido' &&
+              !['cancelado', 'completado'].includes(result.status) && (
+                <section className="payment-panel">
+                  <div className="eyebrow">CONSULTA VIRTUAL</div>
+                  <h3>
+                    {result.paymentTest
+                      ? 'Demostración · No transferir'
+                      : result.paymentStatus === 'verificado'
+                        ? 'Pago verificado por el despacho'
+                        : result.paymentStatus === 'revision'
+                          ? 'Transferencia en revisión'
+                          : 'Completa tu transferencia'}
+                  </h3>
+                  {!result.paymentTest && (
+                    <p>
+                      Valor de la consulta:{' '}
+                      <strong>
+                        USD {Number(result.paymentAmount).toFixed(2)}
+                      </strong>
+                    </p>
+                  )}
+                  {result.paymentStatus !== 'verificado' && (
+                    <p className="pre-line">{result.paymentInstructions}</p>
+                  )}
+                  {!result.paymentTest &&
+                    result.paymentStatus === 'pendiente' && (
+                      <form onSubmit={reportPayment}>
+                        <label className="field-label">
+                          Referencia o número de transacción
+                          <input
+                            className="field"
+                            value={bankReference}
+                            onChange={(e) => setBankReference(e.target.value)}
+                            required
+                            minLength={5}
+                            maxLength={150}
+                            placeholder="Número que muestra tu banco"
+                          />
+                        </label>
+                        <button className="btn gold" disabled={busy}>
+                          Ya transferí · Solicitar verificación
+                        </button>
+                        <p className="form-note">
+                          El abogado verificará el ingreso en su banco. Enviar
+                          esta referencia no confirma automáticamente el pago.
+                        </p>
+                      </form>
+                    )}
+                </section>
+              )}
+            {result.status === 'confirmado' && result.meetingUrl && (
+              <a
+                className="btn gold tracking-meeting"
+                href={result.meetingUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Entrar a mi cita virtual
+              </a>
+            )}
+            {!!result.notifications?.length && (
+              <details className="notification-history">
+                <summary>Correos de esta solicitud</summary>
+                {result.notifications.map((n: any, i: number) => (
+                  <p key={i}>
+                    {statusLabels[n.eventStatus] || 'Novedad'} ·{' '}
+                    {emailStatusLabels[n.status] || n.status}
+                  </p>
+                ))}
+                <p className="form-note">
+                  «Aceptado por Brevo» confirma la recepción por el proveedor.
+                  Revisa tu bandeja y spam para comprobar la entrega.
+                </p>
+              </details>
+            )}
             <ol className="timeline">
               {result.events.map((event: any, i: number) => (
                 <li key={i}>

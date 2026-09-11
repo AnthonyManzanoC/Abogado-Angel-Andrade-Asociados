@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { getPublic } from '@/lib/api';
 import { ServiceIcon } from '@/components/service-icon';
+import { CaseStudies } from '@/components/case-studies';
+import { Introduction } from '@/components/introduction';
 export const dynamic = 'force-dynamic';
 export default async function Home() {
   const data = await getPublic();
@@ -100,6 +102,13 @@ export default async function Home() {
           <ArrowUpRight />
         </Link>
       </section>
+      <nav className="editorial-path wrap" aria-label="Conoce el despacho">
+        <span>PERSONAS. ESTRATEGIA. RESULTADOS.</span>
+        <Link href="/firma">La trayectoria ↗</Link>
+        <Link href="/casos">Casos ganados ↗</Link>
+        <Link href="/apoyo">Compromiso social ↗</Link>
+      </nav>
+      <Introduction settings={s} />
       <section className="section wrap">
         <div className="section-heading">
           <div>
@@ -167,6 +176,46 @@ export default async function Home() {
             </span>
           </div>
         </Link>
+      </section>
+      {(data.cases || []).length > 0 && (
+        <section className="section wrap">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">03 / EXPERIENCIA EN ACCIÓN</span>
+              <h2>El trabajo que habla.</h2>
+            </div>
+            <Link href="/casos" className="text-link">
+              Explorar los casos <ArrowUpRight size={18} />
+            </Link>
+          </div>
+          <CaseStudies items={(data.cases || []).slice(0, 2)} />
+        </section>
+      )}
+      <section className="solidarity-spotlight wrap">
+        <div className="solidarity-emblem">
+          <span>01</span>
+          <p>
+            UN CASO AL MES.
+            <br />
+            UNA OPORTUNIDAD.
+          </p>
+        </div>
+        <div>
+          <span className="eyebrow">EL DERECHO TAMBIÉN ES ESCUCHAR</span>
+          <h2>
+            {s.solidarityTitle || 'Una oportunidad para volver a empezar.'}
+          </h2>
+          <p>
+            {s.solidarityDescription ||
+              'Un espacio de apoyo legal para quienes atraviesan una situación de vulnerabilidad.'}
+          </p>
+          <Link className="btn gold" href="/apoyo">
+            Conoce el apoyo solidario <ArrowUpRight size={18} />
+          </Link>
+          <span className="solidarity-caption">
+            Postulación gratuita · revisión privada · selección mensual
+          </span>
+        </div>
       </section>
       {data.promotions.length > 0 && (
         <section className="wrap promotion-section">

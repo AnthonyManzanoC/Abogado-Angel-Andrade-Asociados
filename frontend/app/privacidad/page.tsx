@@ -13,18 +13,21 @@ export default async function Page() {
       </p>
       <h2>Información que compartes</h2>
       <p>
-        Al solicitar una consulta recogemos tu nombre, teléfono, correo si lo
-        proporcionas, área de interés, resumen del asunto, modalidad y horario
-        solicitado. También registramos el consentimiento y el estado de la
-        solicitud.
+        Al solicitar una consulta recogemos tu nombre, teléfono, correo, área de
+        interés, resumen del asunto, modalidad y horario solicitado. También
+        registramos el consentimiento y el estado de la solicitud.
       </p>
       <h2>Para qué la utilizamos</h2>
       <p>
         Usamos estos datos para revisar tu solicitud, coordinar la atención y
-        comunicarte novedades en este portal. El acceso administrativo está
-        restringido al despacho. No utilices el formulario para enviar
-        documentos de identidad, información bancaria ni detalles especialmente
-        sensibles.
+        comunicarte novedades en este portal y mediante correos transaccionales
+        enviados con Brevo. Brevo recibe el destinatario y el contenido del
+        aviso, incluido el enlace privado; puede registrar aperturas y clics
+        según la configuración de la cuenta. Para citas virtuales también se
+        guarda la referencia de transferencia y la verificación del despacho. El
+        acceso administrativo está restringido al despacho. No utilices el
+        formulario para enviar documentos de identidad, información bancaria ni
+        detalles especialmente sensibles.
       </p>
       <h2>Almacenamiento y acceso</h2>
       <p>
@@ -56,6 +59,28 @@ export default async function Page() {
         de IA ni ofrece asesoría jurídica. El texto de la conversación permanece
         en esta sesión del navegador; los datos se envían al despacho cuando
         confirmas una solicitud.
+      </p>
+      <p>
+        El dictado es opcional y requiere el permiso de micrófono. El navegador
+        puede enviar el audio a su proveedor de reconocimiento de voz; el portal
+        no almacena grabaciones. Revisa la transcripción antes de enviarla. La
+        lectura de respuestas se activa y desactiva a tu elección.
+      </p>
+      <h2>Postulaciones al apoyo solidario</h2>
+      <p>
+        El formulario solicita contacto, ciudad, resumen del asunto y el
+        contexto necesario para evaluar la necesidad de apoyo. Solo el despacho
+        puede leer la postulación; el seguimiento privado muestra decisiones y
+        mensajes, sin exponer el relato ni las notas internas. Las historias no
+        se publican ni se convierten automáticamente en testimonios o casos de
+        la web.
+      </p>
+      <p>
+        Comparte solo información necesaria y evita documentos de identidad o
+        datos identificables de terceros. Se conserva la aceptación de las
+        condiciones de la convocatoria. Puedes retirar una postulación activa
+        desde tu seguimiento y contactar al despacho para solicitar la revisión
+        o eliminación de tus datos.
       </p>
       <h2>Alcance del portal</h2>
       <p>

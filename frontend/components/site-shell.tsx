@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Assistant } from './assistant';
+import { whatsappLink } from '@/lib/contact';
 import {
   ArrowUpRight,
   Menu,
@@ -19,6 +20,7 @@ export function SiteShell({
 }) {
   const path = usePathname();
   const [menu, setMenu] = useState(false);
+  const whatsapp = whatsappLink(settings.whatsapp);
   if (path.startsWith('/admin')) return <>{children}</>;
   return (
     <>
@@ -28,12 +30,21 @@ export function SiteShell({
       <header className="site-header">
         <div className="header-inner wrap">
           <Link href="/" className="brand" aria-label="Ángel Andrade, inicio">
-            <span className="monogram">
-              A<span>A</span>
-              <i />
-            </span>
+            {settings.logoUrl ? (
+              <img
+                className="brand-logo"
+                src={settings.logoUrl}
+                alt="Logo del despacho"
+              />
+            ) : (
+              <span className="monogram">
+                A<span>A</span>
+                <i />
+              </span>
+            )}
             <span className="brand-name">
-              ÁNGEL ANDRADE<span>ABOGADO & ASESOR LEGAL</span>
+              {settings.name || 'ÁNGEL ANDRADE'}
+              <span>ABOGADO & ASESOR LEGAL</span>
             </span>
           </Link>
           <nav
@@ -45,6 +56,8 @@ export function SiteShell({
               ['/firma', 'El abogado'],
               ['/servicios', 'Servicios'],
               ['/vitrina', 'Vitrina legal'],
+              ['/casos', 'Casos'],
+              ['/apoyo', 'Apoyo solidario'],
               ['/contacto', 'Contacto'],
             ].map(([href, label]) => (
               <Link
@@ -139,7 +152,18 @@ export function SiteShell({
           </div>
         </div>
       </footer>
-      <Assistant />
+      {whatsapp && (
+        <a
+          className="whatsapp-launch"
+          href={whatsapp}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Conversar directamente con el abogado por WhatsApp"
+        >
+          WhatsApp <ArrowUpRight size={18} />
+        </a>
+      )}
+      <Assistant name={settings.assistantName || 'Alma'} />
     </>
   );
 }

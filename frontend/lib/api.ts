@@ -38,6 +38,10 @@ export type PublicData = {
   settings: Settings;
   services: Content[];
   promotions: Content[];
+  education?: Content[];
+  achievements?: Content[];
+  gallery?: Content[];
+  cases?: Content[];
   unavailable?: boolean;
 };
 export const apiBase = process.env.API_INTERNAL_URL || 'http://127.0.0.1:5080';

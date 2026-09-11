@@ -24,7 +24,12 @@ export default async function Page({
         </p>
       </div>
       <div className="consult-layout">
-        <RequestForm services={data.services} initialService={servicio} />
+        <RequestForm
+          services={data.services}
+          initialService={servicio}
+          paymentTestMode={data.settings.paymentTestMode !== false}
+          virtualFee={data.settings.virtualFee || 0}
+        />
         <aside className="consult-aside">
           <div className="aside-portrait">
             <img src="/images/angel-andrade.jpg" alt="Ángel Andrade Núñez" />
