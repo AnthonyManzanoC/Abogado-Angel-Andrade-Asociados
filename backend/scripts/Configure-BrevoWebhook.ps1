@@ -13,7 +13,14 @@ $callbackUrl = $SiteUrl.TrimEnd('/') + '/api/webhooks/brevo'
 # A no-op callback verifies that the new deployment and the shared secret agree.
 $null = Invoke-RestMethod -Uri $callbackUrl -Method Post -ContentType 'application/json' -Headers @{ Authorization = 'Bearer ' + $webhookSecret } -Body '{"event":"setup_check"}'
 $headers = @{ 'api-key' = $apiKey }
-$existing = Invoke-RestMethod 'https://api.brevo.com/v3/webhooks?type=transactional' -Headers $headers
+try {
+  $existing = Invoke-RestMethod 'https://api.brevo.com/v3/webhooks?type=transactional' -Headers $headers
+} catch {
+  # Brevo returns document_not_found for an account with no registered webhooks.
+  $providerError = try { $_.ErrorDetails.Message | ConvertFrom-Json } catch { $null }
+  if ([int]$_.Exception.Response.StatusCode -notin @(400,404) -or $providerError.code -ne 'document_not_found') { throw }
+  $existing = @{ webhooks = @() }
+}
 $existingHooks = @($existing.webhooks | Where-Object { $_.url -eq $callbackUrl })
 if ($existingHooks.Count -gt 1) { throw 'Hay varios webhooks con esta URL. Revisa los duplicados en Brevo antes de continuar.' }
 $payload = @{

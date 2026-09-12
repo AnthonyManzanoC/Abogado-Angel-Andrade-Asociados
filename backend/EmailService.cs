@@ -70,7 +70,7 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
             var outboxId = Guid.NewGuid();
             var recipient = audience == "client" ? R("email") : S("notificationEmail");
             if (recipient == "") continue;
-            var destination = audience == "client" ? tracking : siteReady ? origin + "/admin" : "";
+            var destination = audience == "client" ? tracking : siteReady ? AdminDestination(origin, r) : "";
             var subject = title + " · " + R("reference");
             var html = EmailTemplate.Render(r, s, eventStatus, audience, destination);
             var payload = new JsonObject { ["sender"] = new JsonObject { ["email"] = S("senderEmail"), ["name"] = S("name") }, ["to"] = new JsonArray(new JsonObject { ["email"] = recipient }), ["subject"] = subject, ["htmlContent"] = html, ["tags"] = new JsonArray("andrade-citas") };
@@ -80,6 +80,12 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
             await insert.ExecuteNonQueryAsync();
         }
         Wake();
+    }
+    public static string AdminDestination(string origin, JsonNode request)
+    {
+        var aid = request["service_id"]?.ToString() == "solidarity";
+        var period = aid ? "&period=" + DateTimeOffset.Parse(request["created_at"]!.ToString()).ToOffset(TimeSpan.FromHours(-5)).ToString("yyyy-MM") : "";
+        return origin + "/admin#section=" + (aid ? "solidarity" : "requests") + "&ref=" + Uri.EscapeDataString(request["reference"]!.ToString()) + period;
     }
     private static string H(string text) => WebUtility.HtmlEncode(text);
     public async Task Retry(Guid id)

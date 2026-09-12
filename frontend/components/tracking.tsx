@@ -33,16 +33,29 @@ export function Tracking() {
     [cancel, setCancel] = useState(false);
   const last = useRef('');
   const [bankReference, setBankReference] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   async function reportPayment(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError('');
     try {
+      let receipt;
+      if (receiptFile) {
+        if (receiptFile.size > 2 * 1024 * 1024) throw new Error('El comprobante debe pesar como máximo 2 MB.');
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(',')[1]);
+          reader.onerror = () => reject(new Error('No se pudo leer el comprobante.'));
+          reader.readAsDataURL(receiptFile);
+        });
+        receipt = { base64 };
+      }
       await api('/track/payment', {
         method: 'POST',
-        body: JSON.stringify({ reference, token, bankReference }),
+        body: JSON.stringify({ reference, token, bankReference, receipt }),
       });
       setBankReference('');
+      setReceiptFile(null);
       await load();
       setNotice(
         'Referencia enviada al despacho. La cita se agenda cuando se verifique el ingreso.',
@@ -235,6 +248,7 @@ export function Tracking() {
                 enlace para conocer la revisión y los siguientes pasos.
               </p>
             )}
+            <p className="notice">Para regresar, abre el correo de esta solicitud y pulsa «Ver mi seguimiento». Revisa también spam. Guarda una copia del enlace por si el correo se demora.</p>
             <div className="button-row tracking-actions">
               <button className="btn outline" onClick={copyLink}>
                 Guardar enlace para regresar
@@ -304,6 +318,11 @@ export function Tracking() {
                             placeholder="Número que muestra tu banco"
                           />
                         </label>
+                        <label className="field-label">
+                          Comprobante de transferencia (opcional)
+                          <input className="field" type="file" accept="image/jpeg,image/png,application/pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} />
+                          <span className="form-note">JPG, PNG o PDF · hasta 2 MB. Archivo privado para el despacho; no se publica en la web.</span>
+                        </label>
                         <button className="btn gold" disabled={busy}>
                           Ya transferí · Solicitar verificación
                         </button>
@@ -315,6 +334,7 @@ export function Tracking() {
                     )}
                 </section>
               )}
+            {result.paymentReceiptUploaded && <p className="notice">Comprobante recibido de forma privada. El despacho debe verificar el ingreso bancario antes de confirmar la cita.</p>}
             {result.status === 'confirmado' && result.meetingUrl && (
               <a
                 className="btn gold tracking-meeting"

@@ -12,6 +12,7 @@ var config=new ConfigurationBuilder().AddJsonFile(Path.Combine(root,"backend","a
 config["PGSSLROOTCERT"]=Path.Combine(root,"backend","certs","supabase-ca.crt");
 await using var db=new Database(config);
 if((await db.Json("SELECT data->'emailEnabled' FROM andrade_portal.settings WHERE id=true"))?.GetValue<bool>()==true)throw new Exception("No ejecutar pruebas sobre un despacho con correo activo. Usa tests/Prepare-Isolated.ps1.");
+if(args.Contains("--receipt-only")){await ReceiptChecks.Run(db,config);return;}
 if(args.Contains("--essential-only")){await EssentialChecks.Run(db,config);return;}
 using var handler=new HttpClientHandler{CookieContainer=new CookieContainer()};
 using var client=new HttpClient(handler){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_API_URL") ?? "http://127.0.0.1:5080"),Timeout=TimeSpan.FromSeconds(35)};

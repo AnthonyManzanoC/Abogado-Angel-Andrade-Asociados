@@ -63,7 +63,7 @@ app.MapGet("/api/availability", async (Portal p, string date) => new { date, tim
 app.MapPost("/api/requests", (Portal p, RequestInput input) => p.CreateRequest(input));
 app.MapPost("/api/track", (Portal p, TrackInput input) => p.Track(input.Reference, input.Token));
 app.MapPost("/api/track/cancel", async (Portal p, TrackInput input) => { await p.Cancel(input.Reference, input.Token); return Results.Ok(new { ok = true }); });
-app.MapPost("/api/track/payment", async (Portal p, PaymentInput input) => { await p.ReportPayment(input.Reference, input.Token, input.BankReference); return Results.Ok(new { ok = true }); });
+app.MapPost("/api/track/payment", async (Portal p, PaymentInput input) => { await p.ReportPayment(input.Reference, input.Token, input.BankReference, input.Receipt); return Results.Ok(new { ok = true }); });
 app.MapPost("/api/admin/login", async (HttpContext ctx, LoginInput input) =>
 {
     Validate.Text(input.Email, 3, 200, "correo"); Validate.Text(input.Password, 1, 200, "contraseña");
@@ -98,6 +98,14 @@ app.MapPut("/api/admin/settings", async (HttpContext ctx, EmailService email, Js
     if (input["weekdays"] is not JsonArray days || days.Count > 7 || days.Any(d => d == null || d.GetValue<int>() < 0 || d.GetValue<int>() > 6)) throw new PortalException("Revisa los días de atención.");
     if (input["closedDates"] is not JsonArray dates || dates.Count > 366 || dates.Any(d => !DateOnly.TryParseExact(d?.ToString(), "yyyy-MM-dd", out _))) throw new PortalException("Revisa las fechas de cierre.");
     await db.Execute("UPDATE andrade_portal.settings SET data=@data::jsonb,updated_at=now() WHERE id=true", ("data", input.ToJsonString())); await Audit(ctx, "settings.saved", "public"); return Results.Ok(new { ok = true });
+});
+app.MapGet("/api/admin/requests/{id:guid}/receipt", async (Guid id, HttpContext ctx, NotificationSecrets secrets) => {
+    var file = await db.Json("SELECT jsonb_build_object('mime',content_type,'secret',payload_secret) FROM andrade_portal.payment_receipts WHERE request_id=@id", ("id", id));
+    if (file == null) return Results.NotFound();
+    var mime = file["mime"]!.ToString();
+    ctx.Response.Headers["Content-Security-Policy"] = "sandbox; default-src 'none'";
+    await Audit(ctx, "payment.receipt.downloaded", id.ToString());
+    return Results.File(Convert.FromBase64String(secrets.Unprotect(file["secret"]!.ToString())), mime, "comprobante." + (mime == "application/pdf" ? "pdf" : mime == "image/png" ? "png" : "jpg"));
 });
 app.MapGet("/api/admin/requests", (Portal p) => p.Requests());
 app.MapPut("/api/admin/requests/{id:guid}", async (HttpContext ctx, Portal p, Guid id, JsonObject input) => { await p.UpdateRequest(id, input, ((JsonNode)ctx.Items["admin"]!)["email"]!.ToString()); await Audit(ctx, "request.updated", id.ToString()); return Results.Ok(new { ok = true }); });
@@ -149,4 +157,4 @@ async Task Audit(HttpContext ctx, string action, string target) => await db.Exec
 record LoginInput(string Email, string Password);
 record PasswordInput(string CurrentPassword, string NewPassword);
 record TrackInput(string Reference, string Token);
-record PaymentInput(string Reference, string Token, string BankReference);
+record PaymentInput(string Reference, string Token, string BankReference, PaymentReceiptInput? Receipt = null);

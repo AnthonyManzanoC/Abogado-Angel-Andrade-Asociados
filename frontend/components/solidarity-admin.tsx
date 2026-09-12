@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import { ClientUpdate } from './client-update';
 import { Choice } from './form-controls';
@@ -10,6 +10,7 @@ const labels: Record<string, string> = {
   no_seleccionado: 'No seleccionada',
 };
 export function SolidarityAdmin() {
+  const openedEmail = useRef(false);
   const [period, setPeriod] = useState(() =>
       new Intl.DateTimeFormat('sv-SE', {
         timeZone: 'America/Guayaquil',
@@ -22,6 +23,16 @@ export function SolidarityAdmin() {
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [confirm, setConfirm] = useState(false);
+  useEffect(() => {
+    const linkedPeriod = new URLSearchParams(window.location.hash.slice(1)).get('period');
+    if (linkedPeriod && /^\d{4}-(0[1-9]|1[0-2])$/.test(linkedPeriod)) setPeriod(linkedPeriod);
+  }, []);
+  useEffect(() => {
+    if (openedEmail.current) return;
+    const reference = new URLSearchParams(window.location.hash.slice(1)).get('ref');
+    const entry = items.find((r) => r.reference === reference);
+    if (entry) { setSelected(entry); openedEmail.current = true; }
+  }, [items]);
   async function load() {
     setItems(await api('/admin/solidarity?period=' + period));
   }

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -103,6 +103,7 @@ const sections = [
 ];
 export function AdminPortal() {
   const router = useRouter();
+  const openedEmail = useRef(false);
   const [user, setUser] = useState<any>(undefined),
     [login, setLogin] = useState({ email: '', password: '' }),
     [error, setError] = useState(''),
@@ -148,6 +149,8 @@ export function AdminPortal() {
     setAudit(a);
   }, []);
   useEffect(() => {
+    const link = new URLSearchParams(window.location.hash.slice(1));
+    if (['requests', 'solidarity'].includes(link.get('section') || '')) setTab(link.get('section')!);
     setAgendaDate(localDate());
     api('/admin/me')
       .then(setUser)
@@ -166,6 +169,14 @@ export function AdminPortal() {
     }, 20000);
     return () => clearInterval(id);
   }, [user]);
+  useEffect(() => {
+    if (!user || openedEmail.current || !requests.length) return;
+    const link = new URLSearchParams(window.location.hash.slice(1));
+    if (link.get('section') !== 'requests') return;
+    const entry = requests.find((r) => r.reference === link.get('ref'));
+    if (entry) { setTab('requests'); setSelected(entry); openedEmail.current = true; }
+    else if (link.get('ref')) { setQuery(link.get('ref')!); openedEmail.current = true; }
+  }, [user, requests]);
   async function action(fn: () => Promise<any>, message: string) {
     setBusy(true);
     setError('');
@@ -1321,6 +1332,9 @@ export function AdminPortal() {
                       <p className="pre-line">
                         Referencia enviada: {selected.paymentReference}
                       </p>
+                    )}
+                    {selected.paymentReceiptUploaded && (
+                      <a className="btn outline" href={'/api/admin/requests/' + selected.id + '/receipt'}>Descargar comprobante privado</a>
                     )}
                     {selected.paymentVerifiedBy && (
                       <p className="form-note">

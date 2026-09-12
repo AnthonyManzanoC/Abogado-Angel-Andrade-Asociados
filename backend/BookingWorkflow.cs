@@ -13,7 +13,7 @@ public sealed partial class Portal
             'appointmentAt',r.appointment_at,'publicNote',r.public_note,'createdAt',r.created_at,'updatedAt',r.updated_at,
             'paymentStatus',r.payment_status,'paymentAmount',r.payment_amount,'paymentTest',r.payment_test,
             'paymentInstructions',CASE WHEN r.payment_test THEN 'DEMOSTRACIÓN. No realices transferencias. Contacta al despacho.' ELSE r.payment_instructions END,
-            'paymentReference',r.payment_reference,'meetingUrl',CASE WHEN r.status='confirmado' THEN r.meeting_url ELSE '' END,
+            'paymentReceiptUploaded',EXISTS(SELECT 1 FROM andrade_portal.payment_receipts pr WHERE pr.request_id=r.id),'paymentReference',r.payment_reference,'meetingUrl',CASE WHEN r.status='confirmado' THEN r.meeting_url ELSE '' END,
             'notifications',COALESCE((SELECT jsonb_agg(jsonb_build_object('eventStatus',o.event_status,'status',o.status,'deliveryStatus',o.delivery_status,'deliveryAt',o.delivery_at,'createdAt',o.created_at,'acceptedAt',o.accepted_at) ORDER BY o.created_at) FROM andrade_portal.email_outbox o WHERE o.request_id=r.id AND o.audience='client'),'[]'::jsonb),
             'events',COALESCE((SELECT jsonb_agg(jsonb_build_object('status',e.status,'note',e.note,'createdAt',e.created_at) ORDER BY e.id) FROM andrade_portal.request_events e WHERE e.request_id=r.id),'[]'::jsonb))
             FROM andrade_portal.requests r WHERE reference=@ref AND tracking_hash=@hash
@@ -24,7 +24,7 @@ public sealed partial class Portal
         SELECT jsonb_build_object('id',id,'reference',reference,'name',name,'email',email,'phone',phone,'serviceId',service_id,
         'message',message,'mode',mode,'appointmentAt',appointment_at,'status',status,'publicNote',public_note,'privateNote',private_note,
         'paymentStatus',payment_status,'paymentAmount',payment_amount,'paymentTest',payment_test,'paymentReference',payment_reference,
-        'paymentVerifiedBy',payment_verified_by,'paymentVerifiedAt',payment_verified_at,'meetingUrl',meeting_url,
+        'paymentReceiptUploaded',EXISTS(SELECT 1 FROM andrade_portal.payment_receipts pr WHERE pr.request_id=requests.id),'paymentVerifiedBy',payment_verified_by,'paymentVerifiedAt',payment_verified_at,'meetingUrl',meeting_url,
         'createdAt',created_at,'updatedAt',updated_at) row FROM andrade_portal.requests WHERE service_id<>'solidarity' ORDER BY created_at DESC LIMIT 500) x
         """);
     private static async Task<JsonNode> LockRequest(NpgsqlConnection c, Guid id)
@@ -93,7 +93,7 @@ public sealed partial class Portal
         var id = (Guid)result; await Event(c, id, "cancelado", "Solicitud cancelada por el cliente. Si ya pagaste, contacta al despacho para coordinar la devolución o reprogramación.");
         await email.Queue(c, id, "cancelado"); await tx.CommitAsync();
     }
-    public async Task ReportPayment(string reference, string token, string bankReference)
+    public async Task ReportPayment(string reference, string token, string bankReference, PaymentReceiptInput? receipt = null)
     {
         await Track(reference, token); Validate.Text(bankReference, 5, 150, "referencia de transferencia");
         await using var c = await db.Source.OpenConnectionAsync(); await using var tx = await c.BeginTransactionAsync();
@@ -103,6 +103,12 @@ public sealed partial class Portal
         if (new[] { "cancelado", "completado" }.Contains(old["status"]!.ToString()) || !new[] { "pendiente", "revision" }.Contains(old["payment_status"]!.ToString())) throw new PortalException("Esta solicitud no admite una transferencia pendiente.", 409);
         if (old["payment_reference"]!.ToString() == bankReference.Trim()) return;
         if (old["payment_status"]!.ToString() == "revision") throw new PortalException("Tu transferencia ya está en revisión. Contacta al despacho si necesitas corregirla.", 409);
+        if (receipt != null)
+        {
+            var file = PaymentReceipt.Decode(receipt);
+            await using var attachment = Database.Command(c, "INSERT INTO andrade_portal.payment_receipts(request_id,content_type,payload_secret) VALUES(@id,@mime,@secret)", ("id", id), ("mime", file.ContentType), ("secret", secrets.Protect(Convert.ToBase64String(file.Bytes))));
+            await attachment.ExecuteNonQueryAsync();
+        }
         await using var update = Database.Command(c, "UPDATE andrade_portal.requests SET payment_status='revision',payment_reference=@ref,updated_at=now() WHERE id=@id", ("id", id), ("ref", bankReference.Trim())); await update.ExecuteNonQueryAsync();
         await Event(c, id, "revision", "Referencia de transferencia recibida. El despacho verificará el ingreso bancario; la cita aún no está agendada.");
         await email.Queue(c, id, "pago_revision"); await tx.CommitAsync();
