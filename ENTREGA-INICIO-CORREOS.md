@@ -30,6 +30,8 @@ La cola se despierta al registrar un aviso, comprueba trabajo pendiente cada seg
 
 ## Hallazgos de producción y paso pendiente
 
+Después del push, se verificó el inicio ampliado en la URL pública de Vercel y una imagen WebP con HTTP 200. La migración 006 ya está aplicada a la base compartida; el modo esencial figura seleccionado. Render todavía devuelve el mensaje del comprobador anterior, por lo que sigue pendiente desplegar allí el nuevo backend. El modo esencial no cambia el comportamiento de un backend antiguo que aún no lo implementa.
+
 La revisión encontró envío activado, 14 avisos aceptados por Brevo y 8 fallidos al preparar el correo. Los 22 figuraban sin acuse de entrega. Esto no permite afirmar que un correo aceptado fue recibido o leído. El endpoint de webhook rechazó con HTTP 401 la clave compartida local; el script se detuvo antes de modificar Brevo.
 
 También había dos APIs locales conectadas a producción. Se detuvieron y se sustituyeron por una API de vista previa con envío desactivado en los puertos 5080/5085. La configuración privada local queda con `EMAIL_DELIVERY_ENABLED=false`. El código nuevo desactiva el envío en Development por defecto; `ALLOW_DEVELOPMENT_EMAIL=true` es una excepción explícita para entornos controlados.
