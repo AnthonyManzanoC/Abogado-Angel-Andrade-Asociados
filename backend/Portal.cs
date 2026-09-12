@@ -59,6 +59,8 @@ public static class Validate
     public static bool MeetingUrl(string raw) => Uri.TryCreate(raw, UriKind.Absolute, out var u) && u.Scheme == "https" && u.Port == 443 && u.UserInfo == "" && (u.Host == "meet.google.com" || u.Host == "zoom.us" || u.Host.EndsWith(".zoom.us", StringComparison.Ordinal)) && u.AbsolutePath.Length > 2 && raw.Length < 1000;
     public static void PremiumSettings(JsonObject s)
     {
+        if(s["emailPolicy"] != null && s["emailPolicy"]!.ToString() is not "important" and not "all") throw new PortalException("Selecciona una frecuencia de correo válida.");
+        foreach(var pair in s.Where(x => x.Key.StartsWith("home", StringComparison.Ordinal))) Text(pair.Value?.ToString(), 2, 1200, pair.Key);
         foreach (var key in new[] { "assistantName", "introTitle" }) if (s[key] != null) Text(s[key]!.ToString(), 2, 100, key);
         foreach (var key in new[] { "logoUrl", "introPoster", "buildingImage", "profileImage" }) if (!MediaUrl(s[key]?.ToString())) throw new PortalException("Selecciona una imagen de la biblioteca.");
         foreach (var key in new[] { "profileName", "profileSubtitle", "buildingCaption", "solidarityTitle", "solidarityDescription", "solidarityTerms" }) if (s[key] != null) Text(s[key]!.ToString(), 2, 3000, key);

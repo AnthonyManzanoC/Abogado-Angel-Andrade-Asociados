@@ -216,7 +216,7 @@ export function detectIntent(text: string) {
     return 'office';
   if (/(video|vitrina|publicacion|redes|buscar)/.test(t)) return 'posts';
   if (
-    /(servicio|area|especialidad|familia|civil|laboral|contrato|negocio)/.test(
+    /(servicio|area|especialidad|familia|civil|penal|defensa|laboral|contrato|negocio)/.test(
       t,
     )
   )

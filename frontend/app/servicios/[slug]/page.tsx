@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPublic } from '@/lib/api';
 import { ServiceIcon } from '@/components/service-icon';
+import { serviceCover } from '@/lib/home-content';
 import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react';
 export async function generateMetadata({
   params,
@@ -26,6 +27,15 @@ export default async function Page({
       <Link href="/servicios" className="text-link">
         <ArrowLeft size={16} /> Volver a servicios
       </Link>
+      {serviceCover(s) && (
+        <img
+          className="service-detail-cover"
+          src={serviceCover(s)}
+          alt={'Imagen referencial de ' + s.title}
+          width={1536}
+          height={1024}
+        />
+      )}
       <div className="detail-layout">
         <div>
           <div className="large-service-icon">

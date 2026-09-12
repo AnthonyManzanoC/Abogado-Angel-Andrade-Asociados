@@ -7,7 +7,11 @@ public sealed partial class EmailService
  {
   var s=proposed??await db.Json("SELECT data FROM andrade_portal.settings WHERE id=true");var issues=new List<string>();
   var master=config["EMAIL_DELIVERY_ENABLED"]=="true";if(!master)issues.Add("Configura EMAIL_DELIVERY_ENABLED=true en el backend de Render.");
-  try { if(Convert.FromBase64String(config["NOTIFICATION_ENCRYPTION_KEY"]??"").Length!=32)issues.Add("Falta una clave de cifrado válida en el servidor."); }catch{issues.Add("Revisa NOTIFICATION_ENCRYPTION_KEY en el servidor.");}
+  if(!NotificationSecrets.ValidKey(config["NOTIFICATION_ENCRYPTION_KEY"]))issues.Add("NOTIFICATION_ENCRYPTION_KEY debe ser Base64 de 16, 24 o 32 bytes. Conserva la clave original que protege los avisos existentes.");
+  else {
+   var samples=await db.Json("SELECT COALESCE(jsonb_agg(payload_secret),'[]'::jsonb) FROM (SELECT payload_secret FROM andrade_portal.email_outbox ORDER BY (status IN ('failed','pending','uncertain')) DESC,created_at DESC LIMIT 25) o");
+   foreach(var sample in samples!.AsArray())try {secrets.Unprotect(sample!.ToString());}catch {issues.Add("Hay avisos que no se pueden abrir con las claves del servidor. Conserva la clave actual y configura la original en NOTIFICATION_LEGACY_ENCRYPTION_KEYS antes de reintentar.");break;}
+  }
   var origin=config["PUBLIC_SITE_URL"]??s?["publicSiteUrl"]?.ToString()??"";
   if(!Uri.TryCreate(origin,UriKind.Absolute,out var uri)||uri.Scheme!="https"||uri.AbsolutePath!="/"||uri.UserInfo!=""||uri.Query!=""||uri.Fragment!="")issues.Add("Completa la URL HTTPS pública del portal, sin rutas ni parámetros.");
   if(!System.Net.Mail.MailAddress.TryCreate(s?["notificationEmail"]?.ToString(),out _))issues.Add("Completa el correo del administrador que recibirá los avisos.");

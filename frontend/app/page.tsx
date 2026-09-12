@@ -10,7 +10,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { getPublic } from '@/lib/api';
-import { ServiceIcon } from '@/components/service-icon';
+import { ServiceCard } from '@/components/service-card';
+import { HomeExperience } from '@/components/home-experience';
+import { homeDefaults } from '@/lib/home-content';
 import { CaseStudies } from '@/components/case-studies';
 import { Introduction } from '@/components/introduction';
 export const dynamic = 'force-dynamic';
@@ -19,10 +21,10 @@ export default async function Home() {
   const s = data.settings;
   return (
     <>
-      <section className="hero wrap">
+      <section className="hero hero-expanded wrap">
         <div className="hero-copy">
           <div className="eyebrow">
-            <span className="status-dot" /> BABAHOYO, ECUADOR{' '}
+            <span className="status-dot" /> {s.city || 'BABAHOYO, ECUADOR'}{' '}
             <span className="eyebrow-line" />
           </div>
           <h1>
@@ -58,7 +60,8 @@ export default async function Home() {
           <div className="portrait-caption">
             <span className="small-caps">TU ABOGADO, A TU LADO</span>
             <h2>
-              Ángel Andrade Núñez<span>Abogado</span>
+              {s.profileName || s.name || 'Ángel Andrade Núñez'}
+              <span>Abogado</span>
             </h2>
             <Link
               href="/firma"
@@ -97,7 +100,7 @@ export default async function Home() {
           </span>
           <div>
             <h3>Nos encontramos aquí</h3>
-            <p>Edificio Alavama · Babahoyo</p>
+            <p>{s.buildingCaption || 'Edificio Alavama · Babahoyo'}</p>
           </div>
           <ArrowUpRight />
         </Link>
@@ -113,29 +116,15 @@ export default async function Home() {
         <div className="section-heading">
           <div>
             <div className="eyebrow">01 / ÁREAS DE PRÁCTICA</div>
-            <h2>Soluciones para lo que importa.</h2>
+            <h2>{s.homeServicesTitle || homeDefaults.homeServicesTitle}</h2>
           </div>
           <Link href="/servicios" className="text-link">
             Todos los servicios <ArrowUpRight size={18} />
           </Link>
         </div>
         <div className="service-grid">
-          {data.services.slice(0, 4).map((service, i) => (
-            <Link
-              href={'/servicios/' + service.id}
-              key={service.id}
-              className="service-card"
-            >
-              <div className="service-card-top">
-                <ServiceIcon name={service.icon} />
-                <span>0{i + 1}</span>
-              </div>
-              <h3>{service.title}</h3>
-              <p>{service.summary}</p>
-              <span className="service-bottom">
-                Conoce cómo podemos ayudarte <ArrowUpRight size={18} />
-              </span>
-            </Link>
+          {data.services.map((service, i) => (
+            <ServiceCard key={service.id} service={service} index={i} />
           ))}
         </div>
         {data.unavailable && (
@@ -144,6 +133,8 @@ export default async function Home() {
           </p>
         )}
       </section>
+      <HomeExperience settings={s} part="process" />
+      <HomeExperience settings={s} part="approach" />
       <section className="vitrina-preview wrap">
         <div>
           <div className="eyebrow">02 / VITRINA LEGAL</div>
@@ -162,7 +153,7 @@ export default async function Home() {
         </div>
         <Link href="/vitrina" className="editorial-cover">
           <img
-            src="/images/angel-andrade.jpg"
+            src={s.heroImage || '/images/angel-andrade.jpg'}
             alt="Explorar la vitrina legal de Ángel Andrade"
           />
           <span className="editorial-play">
@@ -217,6 +208,7 @@ export default async function Home() {
           </span>
         </div>
       </section>
+      <HomeExperience settings={s} part="questions" />
       {data.promotions.length > 0 && (
         <section className="wrap promotion-section">
           {data.promotions.map((p) => (

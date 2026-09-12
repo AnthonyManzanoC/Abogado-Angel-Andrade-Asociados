@@ -395,7 +395,7 @@ export function Assistant({ name = 'Alma' }: { name?: string }) {
           (r.appointmentAt
             ? 'El horario está pendiente de confirmación. '
             : '') +
-          'El correo de recepción queda en la cola de notificaciones. En tu seguimiento podrás comprobar el estado del envío. Guarda también este enlace privado para regresar.' +
+          'Se han registrado los avisos de recepción para ti y para el despacho. La aprobación, confirmación o cancelación también se notifican por correo. En tu seguimiento puedes comprobar el estado del envío; guarda este enlace privado para regresar.' +
           (r.status === 'pendiente_pago'
             ? ' La cita virtual requiere verificar el pago antes de agendar.'
             : ''),

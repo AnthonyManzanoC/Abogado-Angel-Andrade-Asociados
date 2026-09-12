@@ -11,6 +11,8 @@ if(args.Length>0)root=Path.GetFullPath(args[0]);
 var config=new ConfigurationBuilder().AddJsonFile(Path.Combine(root,"backend","appsettings.Local.json")).Build();
 config["PGSSLROOTCERT"]=Path.Combine(root,"backend","certs","supabase-ca.crt");
 await using var db=new Database(config);
+if((await db.Json("SELECT data->'emailEnabled' FROM andrade_portal.settings WHERE id=true"))?.GetValue<bool>()==true)throw new Exception("No ejecutar pruebas sobre un despacho con correo activo. Usa tests/Prepare-Isolated.ps1.");
+if(args.Contains("--essential-only")){await EssentialChecks.Run(db,config);return;}
 using var handler=new HttpClientHandler{CookieContainer=new CookieContainer()};
 using var client=new HttpClient(handler){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_API_URL") ?? "http://127.0.0.1:5080"),Timeout=TimeSpan.FromSeconds(35)};
 client.DefaultRequestHeaders.Add("X-Portal-Client","web");client.DefaultRequestHeaders.Add("Origin","http://127.0.0.1:3000");
@@ -58,13 +60,19 @@ try{
  var init=await Mcp("initialize",new{protocolVersion="2025-11-25",capabilities=new{},clientInfo=new{name="andrade-integration-test",version="1.0"}},1);Check(init["result"]?["protocolVersion"]!=null,"Negociación MCP con SDK oficial");var tools=await Mcp("tools/list",new{},2);Check(tools["result"]!["tools"]!.AsArray().Count==6,"Seis herramientas MCP descubiertas");var result=await Mcp("tools/call",new{name="list_services",arguments=new{}},3);Check(result["result"]?["content"]!=null&&result["result"]?["isError"]?.ToString()!="true","Ejecución MCP de servicios");
  var schema=await db.Json("SELECT jsonb_build_object('tables',count(*),'secured',bool_and(relrowsecurity)) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='andrade_portal' AND c.relkind='r'");Check(schema!["tables"]!.GetValue<int>()>=9&&schema["secured"]!.GetValue<bool>(),"Tablas de Supabase con RLS activado");
  var persisted=await db.Json("SELECT jsonb_build_object('count',count(*)) FROM andrade_portal.requests WHERE email=@email",("email",email));Check(persisted!["count"]!.GetValue<int>()==2,"Solicitudes confirmadas directamente en PostgreSQL");
- using var web=new HttpClient(handler,false){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_WEB_URL") ?? "http://127.0.0.1:3000"),Timeout=TimeSpan.FromSeconds(60)};foreach(var path in new[]{"/","/firma","/servicios","/servicios/familia","/vitrina","/consulta","/seguimiento","/contacto","/privacidad","/admin","/api/health","/api/admin/me"})Check((await web.GetAsync(path)).IsSuccessStatusCode,"Ruta frontend "+path);
+ using var web=new HttpClient(handler,false){BaseAddress=new Uri(Environment.GetEnvironmentVariable("TEST_WEB_URL") ?? "http://127.0.0.1:3000"),Timeout=TimeSpan.FromSeconds(60)};foreach(var path in new[]{"/","/firma","/servicios","/servicios/familia","/vitrina","/consulta","/seguimiento","/contacto","/privacidad","/admin","/api/health","/api/admin/me"}) {
+  if(path=="/api/admin/me" && Environment.GetEnvironmentVariable("TEST_WEB_SEPARATE_API")=="true") {Console.WriteLine("SKIP: La sesión del esquema aislado no se comparte con el frontend de otra API.");continue;}
+  Check((await web.GetAsync(path)).IsSuccessStatusCode,"Ruta frontend "+path);
+ }
+ await db.Execute("UPDATE andrade_portal.settings SET data=jsonb_set(data,'{emailPolicy}','\"all\"') WHERE id=true");
  await PremiumChecks.Run(db,config);
  var currentPeriod=DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-5)).ToString("yyyy-MM");
  var currentApplications=(await db.Json("SELECT to_jsonb(count(*)) FROM andrade_portal.solidarity_applications WHERE period=@period",("period",currentPeriod)))!.GetValue<int>();
  if(currentApplications==0)await CommunityChecks.Run(db,config,client);
  else Console.WriteLine("SKIP: Selección de la convocatoria actual: existen postulaciones reales. Se conservan sin modificaciones.");
+ await db.Execute("UPDATE andrade_portal.settings SET data=jsonb_set(data,'{emailPolicy}','\"important\"') WHERE id=true");
  await NotificationChecks.Run(db,config,client);
+ await EssentialChecks.Run(db,config);
  Console.WriteLine($"\n{passed} verificaciones completadas. Se eliminarán todos los registros temporales.");
 }finally{
  await db.Execute("DELETE FROM andrade_portal.requests WHERE email=@email",("email",email));

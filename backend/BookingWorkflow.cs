@@ -75,7 +75,13 @@ public sealed partial class Portal
         if (new[] { "cancelado", "completado" }.Contains(oldStatus) && meeting != O("meeting_url")) throw new PortalException("No puedes cambiar el enlace de una solicitud cerrada.", 409);
         var publicChange = status != oldStatus || note != O("public_note") || meeting != O("meeting_url") || payment != O("payment_status");
         await using (var cmd = Database.Command(c, "UPDATE andrade_portal.requests SET status=@status,public_note=@note,private_note=@private,meeting_url=@meeting,updated_at=now() WHERE id=@id", ("id", id), ("status", status), ("note", note), ("private", privateNote), ("meeting", meeting))) { await cmd.ExecuteNonQueryAsync(); }
-        if (publicChange) { var eventStatus = status != oldStatus ? status : payment != O("payment_status") ? "pago_verificado" : "actualizacion"; await Event(c, id, eventStatus, note == "" ? EmailService.Label(eventStatus) : note); await email.Queue(c, id, eventStatus); }
+        if (publicChange) {
+            var eventStatus = status != oldStatus ? status : payment != O("payment_status") ? "pago_verificado" : "actualizacion";
+            await Event(c, id, eventStatus, note == "" ? EmailService.Label(eventStatus) : note);
+            await using var policyCmd = Database.Command(c, "SELECT data->>'emailPolicy' FROM andrade_portal.settings WHERE id=true");
+            var allChanges = (await policyCmd.ExecuteScalarAsync())?.ToString() == "all";
+            if (eventStatus != "actualizacion" || (status == "confirmado" && meeting != O("meeting_url")) || allChanges) await email.Queue(c, id, eventStatus);
+        }
         await tx.CommitAsync();
     }
     public async Task Cancel(string reference, string token)

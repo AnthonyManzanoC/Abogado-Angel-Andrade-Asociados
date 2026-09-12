@@ -81,6 +81,7 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { ServiceIcon } from './service-icon';
+import { serviceImages } from '@/lib/home-content';
 import { EditorialAdmin } from './editorial-admin';
 import { SolidarityAdmin } from './solidarity-admin';
 import { PremiumSettings } from './premium-settings';
@@ -1675,7 +1676,7 @@ export function AdminPortal() {
                     </label>
                   </div>
                 )}
-                {tab === 'posts' && (
+                {(tab === 'posts' || tab === 'services') && (
                   <label className="field-label">
                     Imagen de portada
                     <Choice
@@ -1691,11 +1692,19 @@ export function AdminPortal() {
                           value: '/images/angel-andrade.jpg',
                           label: 'Retrato profesional',
                         },
+                        ...(tab === 'services' ? serviceImages : []),
                         ...media
                           .filter((m) => m.contentType.startsWith('image/'))
                           .map((m) => ({ value: m.url, label: m.name })),
                       ]}
                     />
+                    {editor.cover && (
+                      <img
+                        className="settings-brand-preview"
+                        src={editor.cover}
+                        alt="Vista previa de la imagen de portada"
+                      />
+                    )}
                     <label className="upload-inline">
                       <Upload size={15} /> Subir imagen
                       <input

@@ -1,5 +1,6 @@
 'use client';
 import { Choice, Check } from './form-controls';
+import { homeFields } from '@/lib/home-content';
 export function PremiumSettings({
   settings: s,
   setSettings,
@@ -25,6 +26,24 @@ export function PremiumSettings({
     setSettings({ ...s, [key]: value });
   return (
     <>
+      <h2 className="settings-divider">Inicio ampliado</h2>
+      <p className="form-note">
+        Personaliza las secciones del inicio. Las imágenes y textos de cada
+        servicio se editan en Servicios y aparecen también en la portada.
+      </p>
+      {homeFields.map(([key, label, fallback]) => (
+        <label key={key} className="field-label">
+          {label}
+          <textarea
+            className="field"
+            rows={2}
+            required
+            maxLength={1200}
+            value={s[key] ?? fallback}
+            onChange={(e) => update(key, e.target.value)}
+          />
+        </label>
+      ))}
       <h2 className="settings-divider">Perfil, contacto y apoyo solidario</h2>
       {(
         [
@@ -259,6 +278,28 @@ export function PremiumSettings({
         creadas en prueba siguen siendo de prueba.
       </p>
       <h2 className="settings-divider">Correos y regreso a la cita</h2>
+      <label className="field-label">
+        Frecuencia de notificaciones
+        <Choice
+          label="Frecuencia de notificaciones"
+          value={s.emailPolicy || 'important'}
+          onChange={(value) => update('emailPolicy', value)}
+          options={[
+            {
+              value: 'important',
+              label: 'Esenciales: recepción y decisiones importantes',
+            },
+            { value: 'all', label: 'Todos los cambios públicos' },
+          ]}
+        />
+      </label>
+      <p className="form-note">
+        En modo esencial se avisa a cliente y administrador al recibir, aprobar,
+        agendar, completar o cancelar. Las revisiones y notas rutinarias quedan
+        en el seguimiento. Una transferencia reportada avisa al administrador;
+        Comunicar una novedad permite enviar un mensaje importante expresamente.
+        Alma sigue estas mismas reglas.
+      </p>
       {(
         [
           ['senderEmail', 'Remitente verificado en Brevo'],

@@ -9,6 +9,11 @@ namespace Andrade;
 // A stable server-only key is required so queued mail survives redeploys.
 public sealed class NotificationSecrets(IConfiguration config)
 {
+    public static bool ValidKey(string? value)
+    {
+        try { return Convert.FromBase64String(value ?? "").Length is 16 or 24 or 32; }
+        catch (FormatException) { return false; }
+    }
     private byte[] Key => Convert.FromBase64String(config["NOTIFICATION_ENCRYPTION_KEY"] ?? throw new PortalException("Falta configurar la protección de notificaciones en el servidor.", 503));
     public string Protect(string plain)
     {
@@ -20,13 +25,26 @@ public sealed class NotificationSecrets(IConfiguration config)
     public string Unprotect(string secret)
     {
         var bytes = Convert.FromBase64String(secret); var plain = new byte[bytes.Length - 28];
-        using var aes = new AesGcm(Key, 16); aes.Decrypt(bytes.AsSpan(0, 12), bytes.AsSpan(28), bytes.AsSpan(12, 16), plain);
-        return Encoding.UTF8.GetString(plain);
+        var keys = new[] { config["NOTIFICATION_ENCRYPTION_KEY"] ?? "" }.Concat((config["NOTIFICATION_LEGACY_ENCRYPTION_KEYS"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        foreach (var key in keys.Where(ValidKey).Distinct())
+        {
+            try { using var aes = new AesGcm(Convert.FromBase64String(key), 16); aes.Decrypt(bytes.AsSpan(0, 12), bytes.AsSpan(28), bytes.AsSpan(12, 16), plain); return Encoding.UTF8.GetString(plain); }
+            catch (CryptographicException) { /* Try an explicitly configured previous key. */ }
+        }
+        throw new CryptographicException("La clave configurada no permite abrir este aviso.");
     }
 }
 
 public sealed partial class EmailService(Database db, IConfiguration config, NotificationSecrets secrets, IHttpClientFactory clients)
 {
+    private readonly SemaphoreSlim wake = new(0, 1);
+    public void Wake() { if (wake.CurrentCount == 0) try { wake.Release(); } catch (SemaphoreFullException) { } }
+    public Task<bool> Wait(CancellationToken ct) => wake.WaitAsync(TimeSpan.FromSeconds(1), ct);
+    public static bool ShouldNotify(string eventStatus, string audience, string policy) => policy == "all" || eventStatus switch {
+        "revision" or "solidarity_revision" or "pago_verificado" => false,
+        "pago_revision" => audience == "admin",
+        _ => true
+    };
     public static string Label(string status) => status switch {
         "solidarity_recibido" => "Postulación solidaria recibida", "solidarity_revision" => "Postulación en revisión", "solidarity_seleccionado" => "Tu caso fue seleccionado para el apoyo mensual", "solidarity_no_seleccionado" => "Tu caso no fue seleccionado en esta convocatoria",
         "actualizacion" => "Nueva comunicación del despacho", "solidarity_actualizacion" => "Novedad de tu apoyo solidario", "pago_verificado" => "Transferencia verificada", "delivery_issue" => "Un aviso al cliente no pudo entregarse",
@@ -48,6 +66,7 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
         foreach (var audience in new[] { "client", "admin" })
         {
             if (onlyAudience != null && audience != onlyAudience) continue;
+            if (!ShouldNotify(eventStatus, audience, S("emailPolicy"))) continue;
             var outboxId = Guid.NewGuid();
             var recipient = audience == "client" ? R("email") : S("notificationEmail");
             if (recipient == "") continue;
@@ -60,6 +79,7 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
                 ("status", siteReady && S("senderEmail") != "" ? "pending" : "failed"), ("error", siteReady && S("senderEmail") != "" ? "" : "Falta URL pública HTTPS o remitente. Completa Configuración antes de nuevas solicitudes."));
             await insert.ExecuteNonQueryAsync();
         }
+        Wake();
     }
     private static string H(string text) => WebUtility.HtmlEncode(text);
     public async Task Retry(Guid id)
@@ -89,17 +109,18 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
             payload["htmlContent"] = html;
         }
         await using var update = Database.Command(c, "UPDATE andrade_portal.email_outbox SET payload_secret=@payload,status='pending',next_attempt_at=now(),attempts=0,last_error='' WHERE id=@id", ("id", id), ("payload", secrets.Protect(payload.ToJsonString())));
-        await update.ExecuteNonQueryAsync(); await tx.CommitAsync();
+        await update.ExecuteNonQueryAsync(); await tx.CommitAsync(); Wake();
     }
-    public async Task Dispatch(CancellationToken ct)
+    public async Task<bool> Dispatch(CancellationToken ct)
     {
+        if (config["EMAIL_DELIVERY_ENABLED"] != "true" || string.IsNullOrEmpty(config["BREVO_API_KEY"])) return false;
+        if ((await db.Json("SELECT data->'emailEnabled' FROM andrade_portal.settings WHERE id=true"))?.GetValue<bool>() != true) return false;
         // An interrupted delivery can have reached Brevo: do not blindly send it twice.
         await db.Execute("UPDATE andrade_portal.email_outbox SET status='uncertain',last_error='Envío interrumpido; revisa el registro de Brevo antes de reintentar.' WHERE status='processing' AND claimed_at<now()-interval '2 minutes'");
-        if (config["EMAIL_DELIVERY_ENABLED"] != "true" || string.IsNullOrEmpty(config["BREVO_API_KEY"])) return;
-        if ((await db.Json("SELECT data->'emailEnabled' FROM andrade_portal.settings WHERE id=true"))?.GetValue<bool>() != true) return;
-        var row = await db.Json("WITH next AS (SELECT id FROM andrade_portal.email_outbox WHERE status='pending' AND next_attempt_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) UPDATE andrade_portal.email_outbox o SET status='processing',attempts=attempts+1,claimed_at=now() FROM next WHERE o.id=next.id RETURNING to_jsonb(o)");
-        if (row == null) return;
+        var row = await db.Json("WITH next AS (SELECT id FROM andrade_portal.email_outbox WHERE status='pending' AND delivery_status='unknown' AND next_attempt_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) UPDATE andrade_portal.email_outbox o SET status='processing',attempts=attempts+1,claimed_at=now() FROM next WHERE o.id=next.id RETURNING to_jsonb(o)");
+        if (row == null) return false;
         await Deliver(row, ct);
+        return true;
     }
     public async Task Deliver(JsonNode row, CancellationToken ct)
     {
@@ -121,7 +142,9 @@ public sealed partial class EmailService(Database db, IConfiguration config, Not
             {
                 var retry = (int)response.StatusCode == 429 && row["attempts"]!.GetValue<int>() < 5;
                 var ambiguous = (int)response.StatusCode >= 500;
-                await db.Execute("UPDATE andrade_portal.email_outbox SET status=@status,last_error=@error,next_attempt_at=now()+interval '2 minutes' WHERE id=@id", ("id", id), ("status", retry ? "pending" : ambiguous ? "uncertain" : "failed"), ("error", "Brevo HTTP " + (int)response.StatusCode + (ambiguous ? ". Revisa Brevo antes de reintentar." : ". Revisa remitente, cuota y configuración.")));
+                var delay = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? (response.Headers.RetryAfter?.Date is { } at ? (at - DateTimeOffset.UtcNow).TotalSeconds : 30 * Math.Pow(2, Math.Clamp(row["attempts"]!.GetValue<int>(), 0, 5)));
+                delay = Math.Clamp(delay, 30, 86400);
+                await db.Execute("UPDATE andrade_portal.email_outbox SET status=@status,last_error=@error,next_attempt_at=now()+@delay*interval '1 second' WHERE id=@id", ("id", id), ("delay", delay), ("status", retry ? "pending" : ambiguous ? "uncertain" : "failed"), ("error", "Brevo HTTP " + (int)response.StatusCode + (ambiguous ? ". Revisa Brevo antes de reintentar." : ". Revisa remitente, cuota y configuración.")));
             }
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException)
@@ -135,9 +158,13 @@ public sealed class EmailWorker(EmailService email, ILogger<EmailWorker> logger)
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-        while (await timer.WaitForNextTickAsync(stoppingToken))
-            try { await email.Dispatch(stoppingToken); }
+        while (!stoppingToken.IsCancellationRequested)
+            try {
+                await email.Wait(stoppingToken);
+                for (var i = 0; i < 20 && !stoppingToken.IsCancellationRequested; i++)
+                    if (!await email.Dispatch(stoppingToken)) break;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch (Exception e) when (!stoppingToken.IsCancellationRequested) { logger.LogWarning("Cola de correo temporalmente no disponible: {Type}", e.GetType().Name); }
     }
 }

@@ -10,6 +10,7 @@ function load(relative){const source=fs.readFileSync(path.join(__dirname,'../fro
  const tools=load('lib/portal-tools.ts');const embeds=load('lib/embeds.ts');let passed=0;
  function check(actual,expected,label){assert.equal(actual,expected,label);console.log('PASS: '+label);passed++;}
  check(tools.detectIntent('¿Puedo agendar una CITA?'),'appointment','Intención de cita en español');
+ check(tools.detectIntent('Necesito defensa penal'),'services','Alma reconoce Derecho Penal');
  check(tools.detectIntent('Quiero consultar mi solicitud'),'track','Seguimiento tiene prioridad sobre consulta');
  check(tools.detectIntent('¿Cuál es la dirección?'),'office','Ubicación con tildes y signos');
  check(tools.detectIntent('¿Cómo cancelar un contrato?'),'services','Una consulta sobre contratos no borra la conversación');

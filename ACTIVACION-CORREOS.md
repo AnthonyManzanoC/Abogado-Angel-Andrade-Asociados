@@ -1,5 +1,7 @@
 # Acceso y notificaciones operativas
 
+**Actualización:** el estado y los pasos vigentes de recuperación están en [ENTREGA-INICIO-CORREOS.md](ENTREGA-INICIO-CORREOS.md). Producción ya tiene Brevo activado; no reemplaces su clave de cifrado con el archivo de instalación original. El nuevo modo esencial reduce los avisos rutinarios.
+
 ## Acceso corregido
 
 Se comprobó el rechazo 401 en la web pública: la contraseña de `ADMIN_PASSWORD` en Render no coincidía con el hash persistido. La inicialización crea la cuenta una vez y no reemplaza contraseñas en cada despliegue. Se restableció puntualmente el acceso y se verificaron login y sesión autenticada públicos con respuesta 200. Las sesiones anteriores quedaron cerradas.

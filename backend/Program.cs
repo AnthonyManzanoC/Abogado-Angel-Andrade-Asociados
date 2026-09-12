@@ -9,6 +9,8 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false).AddEnvironmentVariables();
+// Local previews may share data with production, but must never consume its mail queue.
+if (builder.Environment.IsDevelopment() && builder.Configuration["ALLOW_DEVELOPMENT_EMAIL"] != "true") builder.Configuration["EMAIL_DELIVERY_ENABLED"] = "false";
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 27 * 1024 * 1024);
 builder.Services.AddSingleton<Database>(); builder.Services.AddSingleton<Portal>();
 builder.Services.AddSingleton<NotificationSecrets>(); builder.Services.AddSingleton<EmailService>();

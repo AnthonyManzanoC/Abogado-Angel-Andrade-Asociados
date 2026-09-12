@@ -44,7 +44,29 @@
     ],
     "startHour": 9,
     "endHour": 17,
-    "closedDates": []
+    "closedDates": [],
+    "homeServicesTitle": "Soluciones para lo que importa.",
+    "homeProcessTitle": "De la primera pregunta al siguiente paso.",
+    "homeProcessDescription": "Una atención clara, con información que puedes consultar cuando la necesites.",
+    "homeStep1Title": "Cuéntanos tu situación",
+    "homeStep1Text": "Envía una consulta o solicita un horario. Puedes hacerlo desde el formulario o con Alma; recibirás una referencia privada.",
+    "homeStep2Title": "Definimos cómo avanzar",
+    "homeStep2Text": "El abogado revisa tu solicitud y acuerda contigo el alcance de la atención. Si eliges una cita virtual, primero se verifica la transferencia.",
+    "homeStep3Title": "Tu atención, conectada",
+    "homeStep3Text": "Consulta la confirmación, la dirección o el enlace de videollamada en tu seguimiento. Las decisiones importantes también se comunican por correo.",
+    "homeApproachTitle": "Escuchar primero. Construir una estrategia contigo.",
+    "homeApproachText": "Detrás de cada consulta hay una persona y una decisión importante. La atención empieza por comprender tu situación, revisar los antecedentes y explicarte las alternativas con claridad.",
+    "homeModalitiesTitle": "Cerca de ti, estés donde estés.",
+    "homeOfficeText": "Conversemos personalmente en el despacho. Solicita un horario y espera la confirmación antes de acudir.",
+    "homeVirtualText": "Recibe atención por videollamada. El despacho confirma el pago y el horario antes de compartir el acceso a tu cita.",
+    "homeFaqTitle": "Antes de dar el primer paso.",
+    "homeFaq1Question": "¿Enviar una solicitud confirma mi cita?",
+    "homeFaq1Answer": "La solicitud inicia la revisión. Tu cita queda agendada cuando el despacho la confirma; puedes comprobarlo con tu enlace privado de seguimiento.",
+    "homeFaq2Question": "¿Qué debo preparar para la consulta?",
+    "homeFaq2Answer": "Un resumen de los hechos, las fechas relevantes y las preguntas que deseas resolver. El abogado te indicará qué documentos necesita revisar.",
+    "homeFaq3Question": "¿Cómo recibo las novedades?",
+    "homeFaq3Answer": "Conserva tu referencia y el enlace privado. El seguimiento reúne el estado actual; el correo comunica la recepción y las decisiones importantes. También puedes contactar al despacho por WhatsApp.",
+    "emailPolicy": "important"
   },
   "services": [
     {
@@ -53,7 +75,8 @@
       "summary": "Defensa y acompañamiento ante una investigación o proceso penal.",
       "description": "Revisión de tu situación y documentación para definir el alcance de la defensa y los siguientes pasos. Contacta directamente al abogado si tienes una diligencia o plazo próximo.",
       "icon": "shield",
-      "category": "Personas"
+      "category": "Personas",
+      "cover": "/images/servicio-penal.webp"
     },
     {
       "id": "civil-patrimonial",
@@ -61,7 +84,8 @@
       "summary": "Protege tus acuerdos, tu patrimonio y lo que has construido.",
       "description": "Cuéntanos sobre contratos, obligaciones, bienes o una controversia patrimonial. Revisaremos tu situación y la documentación disponible para definir los siguientes pasos.\n\nLa primera conversación permite delimitar el asunto y acordar el alcance del acompañamiento.",
       "icon": "document",
-      "category": "Personas"
+      "category": "Personas",
+      "cover": "/images/servicio-civil.webp"
     },
     {
       "id": "familia",
@@ -69,7 +93,8 @@
       "summary": "Acompañamiento cercano para decisiones personales importantes.",
       "description": "Un espacio confidencial para conversar sobre tu situación familiar y organizar la información necesaria. Cada solicitud se revisa de forma individual antes de definir una estrategia.\n\nPuedes compartir un resumen inicial sin adjuntar información sensible.",
       "icon": "users",
-      "category": "Personas"
+      "category": "Personas",
+      "cover": "/images/servicio-familia.webp"
     },
     {
       "id": "laboral",
@@ -77,7 +102,8 @@
       "summary": "Claridad en tus derechos, obligaciones y relaciones de trabajo.",
       "description": "Solicita una revisión de tu situación laboral, acuerdos o documentación. El despacho evaluará el asunto para determinar las alternativas y el alcance del servicio.\n\nOrganiza las fechas relevantes y la documentación disponible antes de la consulta.",
       "icon": "briefcase",
-      "category": "Personas y negocios"
+      "category": "Personas y negocios",
+      "cover": "/images/servicio-laboral.webp"
     },
     {
       "id": "negocios",
@@ -85,7 +111,8 @@
       "summary": "Decisiones con respaldo para emprender y hacer crecer tu negocio.",
       "description": "Conversamos sobre los acuerdos y necesidades legales de tu actividad. La revisión inicial ayuda a identificar prioridades y definir una propuesta de acompañamiento.\n\nEl alcance y los honorarios se acuerdan personalmente antes de iniciar un servicio.",
       "icon": "building",
-      "category": "Negocios"
+      "category": "Negocios",
+      "cover": "/images/servicio-negocios.webp"
     }
   ],
   "promotions": [],

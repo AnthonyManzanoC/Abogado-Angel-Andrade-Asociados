@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { getPublic } from '@/lib/api';
-import { ServiceIcon } from '@/components/service-icon';
+import { ServiceCard } from '@/components/service-card';
 export const metadata = { title: 'Servicios legales' };
 export default async function Page() {
   const d = await getPublic();
@@ -21,18 +21,7 @@ export default async function Page() {
       </div>
       <div className="services-full">
         {d.services.map((s, i) => (
-          <Link className="service-card" key={s.id} href={'/servicios/' + s.id}>
-            <div className="service-card-top">
-              <ServiceIcon name={s.icon} />
-              <span>0{i + 1}</span>
-            </div>
-            <span className="small-caps">{s.category}</span>
-            <h2>{s.title}</h2>
-            <p>{s.summary}</p>
-            <span className="service-bottom">
-              Explorar servicio <ArrowUpRight size={20} />
-            </span>
-          </Link>
+          <ServiceCard key={s.id} service={s} index={i} />
         ))}
       </div>
       {d.unavailable && (
