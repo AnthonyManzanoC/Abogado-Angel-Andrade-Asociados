@@ -28,23 +28,37 @@ Alma, WebMCP, MCP y el formulario usan el mismo registro transaccional. Alma sol
 
 La cola se despierta al registrar un aviso, comprueba trabajo pendiente cada segundo mientras el servidor está activo y procesa hasta 20 avisos seguidos, sin esperar cinco segundos entre destinatarios. La recepción real depende del proveedor y de la disponibilidad del servidor. Los HTTP 429 respetan Retry-After o una espera creciente; respuestas ambiguas no se reenvían automáticamente. Los acuses del proveedor evitan volver a enviar un aviso ya entregado.
 
-## Hallazgos de producción y paso pendiente
+## Producción verificada: 12 de septiembre de 2026
 
-Después del push, se verificó el inicio ampliado en la URL pública de Vercel y una imagen WebP con HTTP 200. La migración 006 ya está aplicada a la base compartida; el modo esencial figura seleccionado. Render todavía devuelve el mensaje del comprobador anterior, por lo que sigue pendiente desplegar allí el nuevo backend. El modo esencial no cambia el comportamiento de un backend antiguo que aún no lo implementa.
+Render, servicio **Abogado-Angel-Andrade-Asociados**, desplegó `0cb8e06` correctamente. Vercel también sirve los accesos nuevos. Las migraciones 006 y 007 están aplicadas. La comprobación pública autenticada devuelve `ready=true`, `sendingEnabled=true`, `webhookConfigured=true`, sin incidencias de configuración.
 
-La revisión encontró envío activado, 14 avisos aceptados por Brevo y 8 fallidos al preparar el correo. Los 22 figuraban sin acuse de entrega. Esto no permite afirmar que un correo aceptado fue recibido o leído. El endpoint de webhook rechazó con HTTP 401 la clave compartida local; el script se detuvo antes de modificar Brevo.
+Se corrigieron tres causas: backend anterior aún desplegado; incompatibilidad entre la clave de cifrado actual y los avisos antiguos; webhook sin configuración compartida válida. Se conservó la clave actual y se añadió la original a `NOTIFICATION_LEGACY_ENCRYPTION_KEYS`. Brevo tiene un único webhook transaccional para la URL del portal, con autenticación y eventos de entrega/rechazo/demora. El script admite la respuesta `document_not_found` que Brevo devuelve cuando todavía no hay webhooks.
 
-También había dos APIs locales conectadas a producción. Se detuvieron y se sustituyeron por una API de vista previa con envío desactivado en los puertos 5080/5085. La configuración privada local queda con `EMAIL_DELIVERY_ENABLED=false`. El código nuevo desactiva el envío en Development por defecto; `ALLOW_DEVELOPMENT_EMAIL=true` es una excepción explícita para entornos controlados.
+### Prueba real controlada
 
-El comprobador anterior solo aceptaba AES de 32 bytes aunque el cifrador admite 16, 24 y 32. Ahora ambos aceptan las mismas longitudes, y se comprueba que las claves puedan abrir hasta 25 avisos recientes/prioritarios. `NOTIFICATION_LEGACY_ENCRYPTION_KEYS` admite claves previas separadas por punto y coma para recuperar avisos anteriores conservando la clave actual. No se reenvían automáticamente los ocho fallidos ni se cambia su contenido.
+La prueba se creó por el MCP público, usando el correo del despacho como destinatario de cliente y de administrador. Referencia `AA-461C94C38268`, identificada expresamente como prueba técnica sin caso legal real.
 
-Para cerrar producción se necesita acceso al servicio **andrade-legal-api** de Render:
+| Evento | Creación (Ecuador) | Entrega cliente | Entrega administrador |
+| --- | --- | --- | --- |
+| Solicitud recibida | 15:31:44 | 15:31:47 | 15:31:48 |
+| Cita agendada | 15:32:10 | 15:32:12 | 15:32:12 |
+| Cancelación | 15:32:27 | 15:32:28 | 15:32:28 |
 
-1. Conservar `NOTIFICATION_ENCRYPTION_KEY` y `BREVO_API_KEY` actuales. No reemplazar la clave de cifrado por otra nueva.
-2. Configurar las dos variables del archivo privado `.local/render-recuperacion.env` y desplegar el último commit de `codex/plataforma-legal` (migración 006). No publicar ese archivo.
-3. Ejecutar `backend/scripts/Configure-BrevoWebhook.ps1`; solo registra el webhook después de comprobar el endpoint autenticado. Después comprobar configuración y remitente en el admin.
-4. Revisar individualmente los fallidos y el estado actual de cada solicitud antes de reintentar. Una solicitud antigua puede haber recibido ya una decisión posterior.
-5. Comprobar una nueva solicitud controlada, ambos destinatarios y su acuse de entrega. Esta entrega no incluyó correos reales de prueba a clientes.
+Los **seis avisos** figuran como `delivered` mediante callbacks reales de Brevo. No se simuló la entrega ni se cambió su estado manualmente. La revisión intermedia no generó avisos. La cancelación liberó el horario solicitado. El registro de prueba se conserva cancelado para auditoría; no queda una cita activa.
+
+El enlace administrativo se abrió en navegador sin sesión, solicitó la contraseña y después abrió directamente la ficha correcta. El seguimiento privado respondió con el estado cancelado usando la clave de la prueba. La aceptación del proveedor, la entrega al servidor destinatario y la lectura son hechos distintos: se acreditó la entrega, no la lectura humana.
+
+### Regresar desde el correo y comprobar transferencias
+
+- Cliente: cada correo conserva el enlace privado a `/seguimiento`, referencia y pasos para volver. Sirve para consulta, cita y apoyo solidario. Para citas virtuales también permite reportar la transferencia y, al confirmarse, entrar a la videollamada.
+- Administrador: el enlace lleva al login y abre la solicitud concreta. En apoyo solidario conserva la convocatoria correspondiente en hora de Ecuador.
+- El cliente puede adjuntar un comprobante JPG, PNG o PDF de hasta 2 MB al reportar la referencia bancaria. Es opcional para conservar compatibilidad con solicitudes anteriores. Se valida el formato, se guarda cifrado en una tabla privada con RLS y se descarga únicamente mediante una sesión administrativa, sin caché y como adjunto. No forma parte de la biblioteca multimedia pública.
+- Reportar referencia y archivo ocurre en la misma transacción. La clave privada de otra solicitud no autoriza la carga; repetir el envío no duplica la notificación. El archivo no verifica el ingreso: el abogado comprueba el banco y confirma el pago.
+- **Los datos bancarios siguen en demostración por indicación del usuario.** Desde Admin → Configuración se deben introducir los datos reales y activar el cobro cuando estén disponibles. No se permiten transferencias ni comprobantes en solicitudes de demostración.
+
+Los 8 avisos históricos fallidos ahora pueden descifrarse. Se conservan para revisión individual: no se reenvían automáticamente estados antiguos que podrían contradecir decisiones posteriores. Los nuevos avisos de la prueba no tuvieron fallos.
+
+La vista previa local usa correo desactivado. El entorno Development no puede consumir la cola de producción salvo habilitación explícita. La configuración privada conserva la clave actual y la anterior; ninguno de esos secretos se incluyó en Git.
 
 El plan gratuito de Render puede suspender el servicio por inactividad; por ello no se garantiza envío inmediato con el servidor dormido. Véase [Render: servicios gratuitos](https://render.com/docs/free). La diferencia entre envío, entrega, demora y rechazo está descrita en [webhooks transaccionales de Brevo](https://developers.brevo.com/docs/transactional-webhooks).
 
@@ -55,3 +69,7 @@ El plan gratuito de Render puede suspender el servicio por inactividad; por ello
 - Las pruebas se preparan con `tests/Prepare-Isolated.ps1`. Su copia de código sustituye únicamente el nombre del esquema por un identificador temporal; usa credenciales de prueba y transporte simulado. El servidor de pruebas nunca envía correo. No se ejecutó la suite sobre las solicitudes reales.
 - `TEST_WEB_SEPARATE_API=true` omite solo compartir la sesión del admin entre APIs de esquemas diferentes; los permisos del backend aislado sí se comprueban.
 - El lint global previo sigue teniendo deuda no abordada por esta entrega; no se declara aprobado.
+
+### Verificación adicional de esta actualización
+
+13 comprobaciones nuevas de comprobantes y accesos aprobadas en un esquema aislado; 19 comprobaciones esenciales repetidas y aprobadas. Compilación .NET sin errores ni advertencias y build de Next.js/TypeScript correcto (14 rutas). El esquema temporal se eliminó al terminar. El comprobante y sus permisos se probaron con transporte simulado en ese esquema; los seis correos de la tabla anterior sí usaron producción y Brevo reales.

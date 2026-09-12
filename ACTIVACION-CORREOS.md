@@ -1,6 +1,6 @@
 # Acceso y notificaciones operativas
 
-**Actualización:** el estado y los pasos vigentes de recuperación están en [ENTREGA-INICIO-CORREOS.md](ENTREGA-INICIO-CORREOS.md). Producción ya tiene Brevo activado; no reemplaces su clave de cifrado con el archivo de instalación original. El nuevo modo esencial reduce los avisos rutinarios.
+**Actualización:** la configuración final y la prueba de seis entregas reales están en [ENTREGA-INICIO-CORREOS.md](ENTREGA-INICIO-CORREOS.md). Producción ya tiene Brevo activado; no reemplaces su clave de cifrado con el archivo de instalación original. El nuevo modo esencial reduce los avisos rutinarios.
 
 ## Acceso corregido
 
@@ -13,8 +13,10 @@ Para futuras recuperaciones existe `dotnet backend.dll --reset-admin`, ejecutado
 | Novedad | Cliente | Administrador |
 | --- | --- | --- |
 | Consulta o cita recibida | Referencia, siguiente paso, seguimiento | Nueva solicitud |
-| Revisión o aprobación | Estado y mensaje del abogado | Cambio registrado |
-| Transferencia reportada / verificada | Estado del pago | Comprobación pendiente o realizada |
+| Aprobación | Estado y mensaje del abogado | Cambio registrado |
+| Revisión rutinaria | Solo seguimiento en modo Esenciales | Solo panel |
+| Transferencia reportada | Solo seguimiento en modo Esenciales | Comprobación pendiente |
+| Pago verificado sin agendar | Solo seguimiento en modo Esenciales | Solo panel |
 | Cita agendada | Fecha en Ecuador, modalidad, dirección o videollamada | Confirmación |
 | Atención completada o cancelada | Resultado operativo y seguimiento | Cambio registrado |
 | Postulación solidaria y decisión | Explicación propia del programa, sin cobro | Solicitud o decisión |
